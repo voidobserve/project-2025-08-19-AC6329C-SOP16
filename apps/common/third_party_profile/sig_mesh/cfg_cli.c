@@ -34,8 +34,6 @@
 
 #define CID_NVAL 0xffff
 
-static void *op_param;
-
 struct comp_data {
     u8_t *status;
     struct net_buf_simple *comp;
@@ -44,21 +42,6 @@ struct comp_data {
 static s32_t msg_timeout = K_SECONDS(2);
 
 static struct bt_mesh_cfg_cli *cli;
-
-static void (*cli_cmd_rsp_callback)(u32_t opcode);
-
-void mesh_cli_cmd_rsp_callback_register(void (*handler)(u32_t opcode))
-{
-    cli_cmd_rsp_callback = handler;
-}
-
-static void cli_cmd_rsp_callback_action(u32_t opcode)
-{
-    if (cli_cmd_rsp_callback) {
-        return cli_cmd_rsp_callback(opcode);
-    }
-    return;
-}
 
 static void comp_data_status(struct bt_mesh_model *model,
                              struct bt_mesh_msg_ctx *ctx,
@@ -81,8 +64,6 @@ static void comp_data_status(struct bt_mesh_model *model,
     *(param->status) = net_buf_simple_pull_u8(buf);
     to_copy  = min(net_buf_simple_tailroom(param->comp), buf->len);
     net_buf_simple_add_mem(param->comp, buf->data, to_copy);
-
-    cli_cmd_rsp_callback_action(OP_DEV_COMP_DATA_STATUS);
 }
 
 static void state_status_u8(struct bt_mesh_model *model,
@@ -157,7 +138,6 @@ static void relay_status(struct bt_mesh_model *model,
     param = cli->op_param;
     *param->status = net_buf_simple_pull_u8(buf);
     *param->transmit = net_buf_simple_pull_u8(buf);
-    cli_cmd_rsp_callback_action(OP_RELAY_STATUS);
 }
 
 struct net_key_param {
@@ -194,8 +174,6 @@ static void net_key_status(struct bt_mesh_model *model,
     if (param->status) {
         *param->status = status;
     }
-
-    cli_cmd_rsp_callback_action(OP_NET_KEY_STATUS);
 }
 
 struct app_key_param {
@@ -233,8 +211,6 @@ static void app_key_status(struct bt_mesh_model *model,
     if (param->status) {
         *param->status = status;
     }
-
-    cli_cmd_rsp_callback_action(OP_APP_KEY_STATUS);
 }
 
 struct mod_app_param {
@@ -285,8 +261,6 @@ static void mod_app_status(struct bt_mesh_model *model,
     if (param->status) {
         *param->status = status;
     }
-
-    cli_cmd_rsp_callback_action(OP_MOD_APP_STATUS);
 }
 
 struct mod_pub_param {
@@ -360,7 +334,6 @@ static void mod_pub_status(struct bt_mesh_model *model,
         param->pub->period = net_buf_simple_pull_u8(buf);
         param->pub->transmit = net_buf_simple_pull_u8(buf);
     }
-    cli_cmd_rsp_callback_action(OP_MOD_PUB_STATUS);
 }
 
 struct mod_sub_param {
@@ -416,7 +389,6 @@ static void mod_sub_status(struct bt_mesh_model *model,
     if (param->status) {
         *param->status = status;
     }
-    cli_cmd_rsp_callback_action(OP_MOD_SUB_STATUS);
 }
 
 struct hb_sub_param {
@@ -449,8 +421,6 @@ static void hb_sub_status(struct bt_mesh_model *model,
     param->sub->count = net_buf_simple_pull_u8(buf);
     param->sub->min = net_buf_simple_pull_u8(buf);
     param->sub->max = net_buf_simple_pull_u8(buf);
-
-    cli_cmd_rsp_callback_action(OP_HEARTBEAT_SUB_STATUS);
 }
 
 struct hb_pub_param {
@@ -485,8 +455,6 @@ static void hb_pub_status(struct bt_mesh_model *model,
         param->pub->feat = net_buf_simple_pull_u8(buf);
         param->pub->net_idx = net_buf_simple_pull_u8(buf);
     }
-
-    cli_cmd_rsp_callback_action(OP_HEARTBEAT_PUB_STATUS);
 }
 
 const struct bt_mesh_model_op bt_mesh_cfg_cli_op[] = {
@@ -526,9 +494,6 @@ static int cli_prepare(void *param, u32_t op)
 
 static void cli_reset(void)
 {
-    u32 rets;//, reti;
-    __asm__ volatile("%0 = rets":"=r"(rets));
-    printf("__func__ %s %x\n", __func__, rets);
     cli->op_pending = 0;
     cli->op_param = NULL;
 }
@@ -537,7 +502,7 @@ static int cli_wait(void)
 {
     int err = 0;
 
-    //cli_reset();
+    cli_reset();
 
     return err;
 }
@@ -548,7 +513,7 @@ int bt_mesh_cfg_comp_data_get(u16_t net_idx, u16_t addr, u8_t page,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -582,7 +547,7 @@ static int get_state_u8(u16_t net_idx, u16_t addr, u32_t op, u32_t rsp,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 0 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -611,7 +576,7 @@ static int set_state_u8(u16_t net_idx, u16_t addr, u32_t op, u32_t rsp,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 1 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -690,7 +655,7 @@ int bt_mesh_cfg_relay_get(u16_t net_idx, u16_t addr, u8_t *status,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 0 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -723,7 +688,7 @@ int bt_mesh_cfg_relay_set(u16_t net_idx, u16_t addr, u8_t new_relay,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 2 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -758,7 +723,7 @@ int bt_mesh_cfg_net_key_add(u16_t net_idx, u16_t addr, u16_t key_net_idx,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 18 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -799,7 +764,7 @@ int bt_mesh_cfg_app_key_add(u16_t net_idx, u16_t addr, u16_t key_net_idx,
     NET_BUF_SIMPLE_DEFINE(msg, 1 + 19 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -810,9 +775,7 @@ int bt_mesh_cfg_app_key_add(u16_t net_idx, u16_t addr, u16_t key_net_idx,
     };
     int err;
 
-    memcpy(op_param, &param, sizeof(struct app_key_param));
-
-    err = cli_prepare(op_param, OP_APP_KEY_STATUS);
+    err = cli_prepare(&param, OP_APP_KEY_STATUS);
     if (err) {
         return err;
     }
@@ -843,7 +806,7 @@ static int mod_app_bind(u16_t net_idx, u16_t addr, u16_t elem_addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 8 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -856,9 +819,7 @@ static int mod_app_bind(u16_t net_idx, u16_t addr, u16_t elem_addr,
     };
     int err;
 
-    memcpy(op_param, &param, sizeof(struct mod_app_param));
-
-    err = cli_prepare(op_param, OP_MOD_APP_STATUS);
+    err = cli_prepare(&param, OP_MOD_APP_STATUS);
     if (err) {
         return err;
     }
@@ -913,7 +874,7 @@ static int mod_sub(u32_t op, u16_t net_idx, u16_t addr, u16_t elem_addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 8 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1020,7 +981,7 @@ static int mod_sub_va(u32_t op, u16_t net_idx, u16_t addr, u16_t elem_addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 22 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1136,7 +1097,7 @@ static int mod_pub_get(u16_t net_idx, u16_t addr, u16_t elem_addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 6 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1205,7 +1166,7 @@ static int mod_pub_set(u16_t net_idx, u16_t addr, u16_t elem_addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 13 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1218,9 +1179,7 @@ static int mod_pub_set(u16_t net_idx, u16_t addr, u16_t elem_addr,
     };
     int err;
 
-    memcpy(op_param, &param, sizeof(struct mod_pub_param));
-
-    err = cli_prepare(op_param, OP_MOD_PUB_STATUS);
+    err = cli_prepare(&param, OP_MOD_PUB_STATUS);
     if (err) {
         return err;
     }
@@ -1280,7 +1239,7 @@ int bt_mesh_cfg_hb_sub_set(u16_t net_idx, u16_t addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 5 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1321,7 +1280,7 @@ int bt_mesh_cfg_hb_sub_get(u16_t net_idx, u16_t addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 0 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1359,7 +1318,7 @@ int bt_mesh_cfg_hb_pub_set(u16_t net_idx, u16_t addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 9 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1402,7 +1361,7 @@ int bt_mesh_cfg_hb_pub_get(u16_t net_idx, u16_t addr,
     NET_BUF_SIMPLE_DEFINE(msg, 2 + 0 + 4);
     struct bt_mesh_msg_ctx ctx = {
         .net_idx = net_idx,
-        .app_idx = BT_MESH_KEY_DEV_REMOTE,
+        .app_idx = BT_MESH_KEY_DEV,
         .addr = addr,
         .send_ttl = BT_MESH_TTL_DEFAULT,
     };
@@ -1462,9 +1421,7 @@ int bt_mesh_cfg_cli_init(struct bt_mesh_model *model, bool primary)
     cli->model = model;
 
     /* Configuration Model security is device-key based */
-    model->keys[0] = BT_MESH_KEY_DEV_LOCAL;
-
-    op_param = malloc(32);
+    model->keys[0] = BT_MESH_KEY_DEV;
 
     return 0;
 }

@@ -24,7 +24,7 @@
 #if  CONFIG_APP_AT_CHAR_COM
 
 #define LOG_TAG_CONST       AT_CHAR_COM
-/* #define LOG_TAG             "[AT_CHAR_UART]" */
+#define LOG_TAG             "[AT_CHAR_UART]"
 #define LOG_ERROR_ENABLE
 #define LOG_DEBUG_ENABLE
 #define LOG_INFO_ENABLE
@@ -135,7 +135,7 @@ void at_cmd_rx_handler(void)
         goto __cmd_rx_end;
     }
 
-    log_info("rx[%d]", __this->data_length);
+    log_info("[%d]", __this->data_length);
     log_info_hexdump(p_data, __this->data_length);
     if (__this->data_length > 3 && 0 == memcmp(at_change_channel_cmd, p_data, 3)) {
         cur_atcom_cid += 9;  //收到TA>命令后, 强行进入解析
@@ -203,7 +203,7 @@ int ct_uart_init(u32 baud)
     u_arg.rx_cbuf = devBuffer_static;
     u_arg.rx_cbuf_size = UART_CBUF_SIZE;  //>=
     u_arg.frame_length = UART_FRAM_SIZE;  //协议数据包
-    u_arg.rx_timeout = 6;  //ms,兼容波特率较低
+    u_arg.rx_timeout = 1;  //ms
     u_arg.isr_cbfun = ct_uart_isr_cb;
     u_arg.baud = baud;
     u_arg.is_9bit = 0;
@@ -245,10 +245,10 @@ static void ct_uart_write(char *buf, u16 len)
     }
 }
 
-int ct_uart_send_packet(const u8 *packet, int size)
+int at_uart_send_packet(const u8 *packet, int size)
 {
-    log_info("ct_uart_send_packet:%d", size);
-    /* log_info_hexdump(packet, size); */
+    log_info("at_uart_send:%d", size);
+    log_info_hexdump(packet, size);
 
 #if 0
     int i = 0;

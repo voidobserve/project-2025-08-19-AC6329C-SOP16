@@ -16,7 +16,7 @@
 #include "app_chargestore.h"
 #include "app_power_manage.h"
 #include "app_comm_bt.h"
-#include "usb/device/cdc.h"
+#include "rf433.h"
 
 #define LOG_TAG_CONST       SPP_AND_LE
 #define LOG_TAG             "[SPP_AND_LE]"
@@ -32,7 +32,6 @@
 #include "media/includes.h"
 #include "key_event_deal.h"
 
-extern void rtc_alarm_set_timer(u32 seconds);
 extern void trans_disconnect(void);
 extern void midi_paly_test(u32 key);
 #endif/*TCFG_AUDIO_ENABLE*/
@@ -55,17 +54,7 @@ extern void app_switch(const char *name, int action);
  *  \note
  */
 /*************************************************************************************************/
-void spple_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void spple_set_soft_poweroff(void)
+void spple_set_soft_poweroff(void)
 {
     log_info("set_soft_poweroff\n");
     is_app_spple_active = 1;
@@ -96,24 +85,11 @@ static void spple_set_soft_poweroff(void)
 /* gpio_direction_output(LED_GPIO_PIN, 0); */
 /* } */
 
-// cdc send test
-static void usb_cdc_send_test()
-{
-#if TCFG_USB_SLAVE_CDC_ENABLE
-    log_info("-send test cdc data-");
-    u8 cdc_test_buf[3] = {0x11, 0x22, 0x33};
-    cdc_write_data(USB0, cdc_test_buf, 3);
-    /* char test_char[] = "cdc test"; */
-    /* cdc_write_data(USB0, test_char, sizeof(test_char)-1); */
-#endif
-}
-
 extern void mem_stats(void);
 static void spple_timer_handle_test(void)
 {
     log_info("not_bt");
     //	mem_stats();//see memory
-    //sys_timer_dump_time();
 }
 
 static const ble_init_cfg_t trans_data_ble_config = {
@@ -154,9 +130,6 @@ static void spple_app_start()
 
 #if TCFG_USER_EDR_ENABLE
         btstack_edr_start_before_init(NULL, 0);
-#if USER_SUPPORT_PROFILE_HCRP
-        __change_hci_class_type(BD_CLASS_PRINTING);
-#endif
 #if DOUBLE_BT_SAME_MAC
         //手机自带搜索界面，默认搜索到EDR
         __change_hci_class_type(BD_CLASS_TRANSFER_HEALTH);//
@@ -176,14 +149,6 @@ static void spple_app_start()
     }
     /* 按键消息使能 */
     sys_key_event_enable();
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-    set_key_wakeup_send_flag(1);
-#endif
-
-#if TCFG_USB_SLAVE_CDC_ENABLE
-    extern void usb_start();
-    usb_start();
-#endif
 }
 /*************************************************************************************************/
 /*!
@@ -208,6 +173,8 @@ static int spple_state_machine(struct application *app, enum app_state state, st
         switch (it->action) {
         case ACTION_SPPLE_MAIN:
             spple_app_start();
+            extern void my_main(void);
+            my_main();
             break;
         }
         break;
@@ -296,6 +263,11 @@ static void spple_key_event_handler(struct sys_event *event)
     if (event->arg == (void *)DEVICE_EVENT_FROM_KEY) {
         event_type = event->u.key.event;
         key_value = event->u.key.value;
+        #if TCFG_RF433_ENABLE
+        extern void rf433_handle(struct sys_event *event);
+        // rf433_handle(event);
+        #endif
+        printf("\n spple_key_event_handler");
         log_info("app_key_evnet: %d,%d\n", event_type, key_value);
         /*Change Case To Idle Demo*/
 #if CONFIG_APP_SPP_LE_TO_IDLE
@@ -317,11 +289,11 @@ static void spple_key_event_handler(struct sys_event *event)
         /*Audio Test Demo*/
 #if TCFG_AUDIO_ENABLE
         if (event_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE0) {
-            log_info(">>>key0:mic/encode test\n");
-            //AC695N/AC696N mic test
+            log_info(">>>key0:open mic\n");
+            //br23/br25 mic test
             /* extern int audio_adc_open_demo(void); */
             /* audio_adc_open_demo(); */
-            //AD697N/AC897N/AC698N mic test
+            //br30 mic test
             /* extern void audio_adc_mic_demo(u8 mic_idx, u8 gain, u8 mic_2_dac); */
             /* audio_adc_mic_demo(1, 1, 1); */
 
@@ -330,17 +302,6 @@ static void spple_key_event_handler(struct sys_event *event)
             /* extern int audio_mic_enc_open(int (*mic_output)(void *priv, void *buf, int len), u32 code_type); */
             /* audio_mic_enc_open(NULL, AUDIO_CODING_OPUS);//opus encode test */
             /* audio_mic_enc_open(NULL, AUDIO_CODING_SPEEX);//speex encode test */
-
-
-            /*
-            //AC632N
-            编码测试类型：
-            AUDIO_CODING_LC3
-            AUDIO_CODING_USBC
-            */
-
-            /* extern int audio_demo_enc_open(int (*demo_output)(void *priv, void *buf, int len), u32 code_type, u8 ai_type); */
-            /* audio_demo_enc_open(NULL, AUDIO_CODING_USBC, 0); */
 
 
 
@@ -352,27 +313,16 @@ static void spple_key_event_handler(struct sys_event *event)
 
         }
         if (event_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE1) {
-            log_info(">>>key1:tone/decode test\n");
-            //AC695N/AC696N tone play test
+            log_info(">>>key1:tone_play_test\n");
+            //br23/25 tone play test
             /* tone_play_by_path(TONE_NORMAL, 1); */
             /* tone_play_by_path(TONE_BT_CONN, 1); */
-            //AD697N/AC897N/AC698N tone play test
+            //br30 tone play test
             /* tone_play(TONE_NUM_8, 1); */
             /* tone_play(TONE_SIN_NORMAL, 1); */
             /* log_info(">>>key0:set  midi\n"); */
             // midi_paly_test(KEY_IR_NUM_1);
 
-
-
-            /*
-            //AC632N
-            解码测试类型：(需要在audio_decode.c中配置)
-            AUDIO_CODING_LC3
-            AUDIO_CODING_USBC
-             */
-
-            /* extern void demo_frame_test(void); */
-            /* demo_frame_test(); */
         }
 
 
@@ -386,7 +336,7 @@ static void spple_key_event_handler(struct sys_event *event)
         if (event_type == KEY_EVENT_TRIPLE_CLICK
             && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
             //for test
-            spple_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            spple_set_soft_poweroff();
             return;
         }
 
@@ -403,19 +353,6 @@ static void spple_key_event_handler(struct sys_event *event)
 #if TCFG_USER_BLE_ENABLE
             log_info(">>>test to disconnect\n");
             trans_disconnect();
-#endif
-        }
-
-        if (event_type == KEY_EVENT_DOUBLE_CLICK && key_value == TCFG_ADKEY_VALUE1) {
-#if TCFG_USB_SLAVE_CDC_ENABLE
-            log_info(">>>test to cdc send\n");
-            usb_cdc_send_test();
-#endif
-
-#if TCFG_RTC_ALARM_ENABLE
-            log_info(">>>test to rtc_test\n");
-            rtc_alarm_set_timer(60);
-            spple_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
 #endif
         }
 

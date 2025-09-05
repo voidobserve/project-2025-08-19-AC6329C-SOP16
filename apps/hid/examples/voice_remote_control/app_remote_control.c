@@ -67,7 +67,7 @@ extern void midi_paly_test(u32 key);
 #define SNIFF_MIN_INTERVALSLOT        16
 #define SNIFF_ATTEMPT_SLOT            2
 #define SNIFF_TIMEOUT_SLOT            1
-#define SNIFF_CHECK_TIMER_PERIOD      200
+#define SNIFF_CHECK_TIMER_PERIOD      100
 #else
 
 #define SNIFF_MODE_TYPE               SNIFF_MODE_DEF
@@ -165,7 +165,6 @@ static const edr_init_cfg_t hidvrc_edr_config = {
     .page_timeout = 8000,
     .super_timeout = 8000,
     .io_capabilities = 3,
-    .passkey_enable = 0,
     .authentication_req = 2,
     .oob_data = 0,
     .sniff_param = &hidvrc_sniff_param,
@@ -186,7 +185,6 @@ extern void p33_soft_reset(void);
 extern void ble_hid_key_deal_test(u16 key_msg);
 extern void ble_module_enable(u8 en);
 static void hidvrc_set_soft_poweroff(void);
-void hidvrc_power_event_to_user(u8 event);
 
 /*************************************************************************************************/
 /*!
@@ -287,7 +285,6 @@ void hidvrc_test_keep_send_init(void)
 static void hidvrc_app_key_deal_test(u8 key_type, u8 key_value)
 {
     u16 key_msg = 0;
-    u16 key_msg_up = 0;
 
     /*Audio Test Demo*/
 #if TCFG_AUDIO_ENABLE
@@ -346,19 +343,6 @@ static void hidvrc_app_key_deal_test(u8 key_type, u8 key_value)
         key_msg = hid_key_click_table[key_value];
     } else if (key_type == KEY_EVENT_HOLD) {
         key_msg = hid_key_hold_table[key_value];
-    } else if (key_type == KEY_EVENT_UP) {
-        log_info("key_up_val = %02x\n", key_value);
-        if (bt_hid_mode == HID_MODE_EDR) {
-#if TCFG_USER_EDR_ENABLE
-            bt_comm_edr_sniff_clean();
-            edr_hid_data_send(1, (u8 *)&key_msg_up, 2);
-#endif
-        } else {
-#if TCFG_USER_BLE_ENABLE
-            ble_hid_data_send(1, &key_msg_up, 2);
-#endif
-        }
-        return;
     }
 
     if (key_msg) {
@@ -366,17 +350,11 @@ static void hidvrc_app_key_deal_test(u8 key_type, u8 key_value)
         if (bt_hid_mode == HID_MODE_EDR) {
 #if TCFG_USER_EDR_ENABLE
             bt_comm_edr_sniff_clean();
-            edr_hid_data_send(1, (u8 *)&key_msg, 2);
-            if (KEY_EVENT_HOLD != key_type) {
-                edr_hid_data_send(1, (u8 *)&key_msg_up, 2);
-            }
+            edr_hid_key_deal_test(key_msg);
 #endif
         } else {
 #if TCFG_USER_BLE_ENABLE
-            ble_hid_data_send(1, &key_msg, 2);
-            if (KEY_EVENT_HOLD != key_type) {
-                ble_hid_data_send(1, &key_msg_up, 2);
-            }
+            ble_hid_key_deal_test(key_msg);
 #endif
         }
         return;
@@ -384,7 +362,7 @@ static void hidvrc_app_key_deal_test(u8 key_type, u8 key_value)
 
     if (key_type == KEY_EVENT_TRIPLE_CLICK
         && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
-        hidvrc_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+        hidvrc_set_soft_poweroff();
         return;
     }
 
@@ -474,27 +452,6 @@ static void hidvrc_vm_deal(u8 rw_flag)
 
 /*************************************************************************************************/
 /*!
- *  \brief      软关机消息处理
- *
- *  \param      [in]
- *
- *  \return
- *
- *  \note
- */
-/*************************************************************************************************/
-void hidvrc_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-/*************************************************************************************************/
-/*!
  *  \brief      进入软关机
  *
  *  \param      [in]
@@ -577,7 +534,7 @@ static void hidvrc_app_start()
 
 #if (TCFG_HID_AUTO_SHUTDOWN_TIME)
     //无操作定时软关机
-    g_auto_shutdown_timer = sys_timeout_add((void *)POWER_EVENT_POWER_SOFTOFF, hidvrc_power_event_to_user, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
+    g_auto_shutdown_timer = sys_timeout_add(NULL, hidvrc_set_soft_poweroff, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
 #endif
 }
 

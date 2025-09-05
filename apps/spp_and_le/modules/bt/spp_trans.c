@@ -73,7 +73,7 @@ int transport_spp_send_data_check(u16 len)
     return 1;
 }
 
-void transport_uart_rx_to_spp(u8 *packet, u32 size)
+static void transport_uart_rx_to_spp(u8 *packet, u32 size)
 {
     if (SPP_USER_ST_CONNECT == spp_state && transport_spp_send_data_check(size)) {
         transport_spp_send_data(packet, size);
@@ -116,8 +116,7 @@ static void transport_spp_recieve_cbk(void *priv, u8 *buf, u16 len)
     spp_channel = (u16)priv;
     log_info("spp_api_rx(%d) \n", len);
     log_info_hexdump(buf, len);
-    /* clear_sniff_cnt(); */
-    bt_comm_edr_sniff_clean();
+    clear_sniff_cnt();
 
 #if TEST_SPP_DATA_RATE
     if ((buf[0] == 'A') && (buf[1] == 'F')) {

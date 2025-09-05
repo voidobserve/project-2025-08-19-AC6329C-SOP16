@@ -7,9 +7,16 @@
  */
 
 /* Log debug config */
-#define MESH_CODE_LOG_DEBUG_EN                  1
+#define MESH_CODE_LOG_DEBUG_EN                  0
 #define CONFIG_BT_DEBUG                         1
 #define MESH_ADAPTATION_OPTIMIZE                1
+
+/* Net buffer config */
+#define NET_BUF_USE_MALLOC                      1
+#define CONFIG_NET_BUF_USER_DATA_SIZE 		    4
+#ifndef NET_BUF_USE_MALLOC
+#define CONFIG_BT_MESH_ADV_BUF_COUNT 		    4
+#endif /* NET_BUF_USE_MALLOC */
 
 /* Buf Replace Config */
 #define CONFIG_BUF_REPLACE_EN					0
@@ -101,13 +108,9 @@
 #define CONFIG_BT_MESH_RPL_STORE_TIMEOUT        600
 
 /* Provisioner config */
-#if (CONFIG_MESH_MODEL == SIG_MESH_PROVISIONER)
-#define CONFIG_BT_MESH_PROVISIONER              1
-#else
 #define CONFIG_BT_MESH_PROVISIONER              0
-#endif
 #if CONFIG_BT_MESH_PROVISIONER
-#define CONFIG_BT_MESH_CDB                      1
+#define CONFIG_BT_MESH_CDB
 #define CONFIG_BT_MESH_CDB_NODE_COUNT           3
 #define CONFIG_BT_MESH_CDB_SUBNET_COUNT         3
 #define CONFIG_BT_MESH_CDB_APP_KEY_COUNT        3

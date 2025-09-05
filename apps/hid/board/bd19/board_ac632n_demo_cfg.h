@@ -89,19 +89,6 @@
 #define KEY_NUM                            	3
 
 #define MULT_KEY_ENABLE						DISABLE 		//是否使能组合按键消息, 使能后需要配置组合按键映射表
-
-//*********************************************************************************//
-//                         softoff wakeup key_driver 配置                          //
-//*********************************************************************************//
-#define TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE       DISABLE_THIS_MOUDLE  //软关机唤醒按键不丢键使能, 目前只支持IOKEY
-
-//请根据board.c中的wakeup_param列表填写
-#define TCFG_WAKEUP_PORT_POWER_SRC          BIT(1)  //唤醒口port[1]
-#define TCFG_WAKEUP_PORT_PREV_SRC           BIT(2)  //唤醒口port[2]
-#define TCFG_WAKEUP_PORT_NEXT_SRC           BIT(3)  //唤醒口port[3]
-
-#define TCFG_LONGKEY_SUPPLEMENT_TIME        15  //长按补充时间,请根据实际测量(power_on——key_init)时间填写 15*10ms(scan_time)=150ms
-
 //*********************************************************************************//
 //                                 iokey 配置                                      //
 //*********************************************************************************//
@@ -110,15 +97,18 @@
 #define TCFG_IOKEY_POWER_CONNECT_WAY		ONE_PORT_TO_LOW    //按键一端接低电平一端接IO
 
 #define TCFG_IOKEY_POWER_ONE_PORT			IO_PORTB_01        //IO按键端口
-#define TCFG_IOKEY_POWER_ONE_PORT_VALUE		0x1                //power port键值，不能设为0,key_value初始化为0,会误推keep事件
 
 #define TCFG_IOKEY_PREV_CONNECT_WAY			ONE_PORT_TO_LOW  //按键一端接低电平一端接IO
 #define TCFG_IOKEY_PREV_ONE_PORT			IO_PORTB_00
-#define TCFG_IOKEY_PREV_ONE_PORT_VALUE		0x2              //prev port键值
 
 #define TCFG_IOKEY_NEXT_CONNECT_WAY 		ONE_PORT_TO_LOW  //按键一端接低电平一端接IO
 #define TCFG_IOKEY_NEXT_ONE_PORT			IO_PORTB_02
-#define TCFG_IOKEY_NEXT_ONE_PORT_VALUE		0x3              //next port键值
+
+
+//*********************************************************************************//
+//                                 2.4G key 配置                                        //
+//*********************************************************************************//
+#define TCFG_RF24GKEY_ENABLE			    ENABLE_THIS_MOUDLE //是否使能IO按键
 
 //*********************************************************************************//
 //                                 adkey 配置                                      //
@@ -175,31 +165,6 @@
 #define TCFG_ADKEY_VALUE8                   8
 #define TCFG_ADKEY_VALUE9                   9
 
-//*********************************************************************************//
-//                                 Audio配置                                       //
-//*********************************************************************************//
-#ifdef CONFIG_LITE_AUDIO
-#define TCFG_AUDIO_ENABLE					DISABLE
-#if TCFG_AUDIO_ENABLE
-#define TCFG_DEC_USBC_ENABLE			    DISABLE
-#define TCFG_ENC_USBC_ENABLE              	DISABLE
-#define TCFG_DEC_MSBC_ENABLE                ENABLE  //MSBC 解码和 USBC 解码不能同时使能
-#define TCFG_DEC_LC3_ENABLE              	DISABLE
-#define TCFG_ENC_LC3_ENABLE              	DISABLE
-#define TCFG_ENC_ADPCM_ENABLE               DISABLE
-#define TCFG_DEC_WAV_ENABLE                 DISABLE
-#define TCFG_DEC_WTGV2_ENABLE               DISABLE
-#define TCFG_DEC_OPUS_ENABLE                DISABLE
-#define TCFG_ENC_OPUS_ENABLE                DISABLE
-//lc3 参数配置
-#if (TCFG_ENC_LC3_ENABLE || TCFG_DEC_LC3_ENABLE)
-#define LC3_CODING_SAMPLERATE  16000 //lc3 编码的采样率
-#define LC3_CODING_FRAME_LEN   50  //帧长度，只支持25，50，100
-#define LC3_CODING_CHANNEL     1  //lc3 的通道数
-#endif
-#endif
-
-#endif
 //*********************************************************************************//
 //                                 irkey 配置                                      //
 //*********************************************************************************//
@@ -278,16 +243,10 @@
 #define TCFG_PWMLED_ENABLE					DISABLE_THIS_MOUDLE			//是否支持PMW LED推灯模块
 #define TCFG_PWMLED_IOMODE					LED_ONE_IO_MODE				//LED模式，单IO还是两个IO推灯
 #define TCFG_PWMLED_PIN						IO_PORTB_06					//LED使用的IO口
-
 //*********************************************************************************//
 //                                  时钟配置                                       //
 //*********************************************************************************//
-#if CONFIG_PLL_SOURCE_USING_LRC
-#define TCFG_CLOCK_SYS_SRC     SYS_CLOCK_INPUT_PLL_RCL   //系统时钟源选择
-#else
-#define TCFG_CLOCK_SYS_SRC     SYS_CLOCK_INPUT_PLL_BT_OSC   //系统时钟源选择
-#endif
-
+#define TCFG_CLOCK_SYS_SRC					SYS_CLOCK_INPUT_PLL_BT_OSC   //系统时钟源选择
 #define TCFG_CLOCK_SYS_HZ					24000000                     //系统时钟设置
 #define TCFG_CLOCK_OSC_HZ					24000000                     //外界晶振频率设置
 /* #define TCFG_CLOCK_MODE                     CLOCK_MODE_USR//CLOCK_MODE_ADAPTIVE */
@@ -308,7 +267,7 @@
     VDDIOW_VOL_21V    VDDIOW_VOL_24V    VDDIOW_VOL_28V    VDDIOW_VOL_32V*/
 #define TCFG_LOWPOWER_VDDIOW_LEVEL			VDDIOW_VOL_28V               //弱VDDIO等级配置
 #define TCFG_LOWPOWER_OSC_TYPE              OSC_TYPE_LRC
-#define TCFG_VD13_CAP_EN					0//有BT_AVDD引脚电容,可以置1,否则要配0
+#define TCFG_VD13_CAP_EN					0
 
 
 //*********************************************************************************//
@@ -324,11 +283,7 @@
 //                                  系统配置                                         //
 //*********************************************************************************//
 #define TCFG_AUTO_SHUT_DOWN_TIME		          0   //没有蓝牙连接自动关机时间
-#if (TCFG_LOWPOWER_POWER_SEL == PWR_DCDC15)
-#define TCFG_SYS_LVD_EN						      1   //dcdc模式电压低于2.4v的时候切为LDO模式，需要开启电量检测
-#else
 #define TCFG_SYS_LVD_EN						      1   //电量检测使能
-#endif
 #define TCFG_POWER_ON_NEED_KEY				      0	  //是否需要按按键开机配置
 #define TCFG_HID_AUTO_SHUTDOWN_TIME              (0 * 60)      //HID无操作自动关机(单位：秒)
 
@@ -347,11 +302,6 @@
 #define USER_SUPPORT_PROFILE_HID    1
 #define USER_SUPPORT_PROFILE_PNP    1
 #define USER_SUPPORT_PROFILE_PBAP   0
-#define USER_SUPPORT_PROFILE_MAP    0//need enable hfp
-#endif
-
-#if (USER_SUPPORT_PROFILE_MAP && (!USER_SUPPORT_PROFILE_HFP))
-#error "PROFILE_MAP NEED ENABLE HFP PROFILE!!!"
 #endif
 
 #if(TCFG_USER_TWS_ENABLE || TCFG_USER_BLE_ENABLE)

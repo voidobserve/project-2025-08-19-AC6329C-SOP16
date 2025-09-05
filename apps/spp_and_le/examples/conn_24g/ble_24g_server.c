@@ -45,19 +45,12 @@
 #endif
 
 //ATT发送的包长,    note: 23 <=need >= MTU
-#define ATT_LOCAL_MTU_SIZE        (64)
-//ATT缓存的buffer支持缓存数据包个数
-#define ATT_PACKET_NUMS_MAX       (2)
-
+#define ATT_LOCAL_MTU_SIZE             (64)
 //ATT缓存的buffer大小,  note: need >= 23,可修改
-#define ATT_SEND_CBUF_SIZE        (ATT_PACKET_NUMS_MAX * (ATT_PACKET_HEAD_SIZE + ATT_LOCAL_MTU_SIZE))
-
+#define ATT_SEND_CBUF_SIZE             (30)
 // 广播周期 (unit:0.625ms)
 #define ADV_INTERVAL_MIN               (16 * 1)//10ms
 //ADV_DIRECT_IND_LOW,定义interval 和 超时切换广播
-
-static  u16 direct_adv_timeout_number  = 0;
-static  u32 pair_reconnect_adv_timeout = 5000;/*回连广播持续时间,ms*/
 #define PAIR_DIRECT_LOW_ADV_TIME       (5000) //ADV_DIRECT_IND_LOW,低频率定向广播时间,5s
 #define PAIR_DIRECT_LOW_ADV_INTERVAL   (0x30) //ADV_DIRECT_IND_LOW,interval 0x30
 
@@ -91,7 +84,7 @@ static const sm_cfg_t sm_init_config = {
 //gatt 初始化gatt_server配置
 extern const gatt_server_cfg_t conn_24g_server_init_cfg;
 //gatt 控制块初始化
-gatt_ctrl_t conn_24g_gatt_server_control_block = {
+static gatt_ctrl_t conn_24g_gatt_control_block = {
     //public
     .mtu_size = ATT_LOCAL_MTU_SIZE,
     .cbuffer_size = ATT_SEND_CBUF_SIZE,
@@ -116,7 +109,7 @@ gatt_ctrl_t conn_24g_gatt_server_control_block = {
 //当前请求的参数表index
 //参数表
 static const struct conn_update_param_t conn_24g_connection_param_table[] = {
-    {6, 9, 0, 600},//android
+    {6, 9, 100, 600},//android
 };
 
 //可用的参数组数
@@ -185,7 +178,7 @@ static void __ble_state_to_user(u8 state, u8 reason)
 }
 
 //vm 绑定对方信息读写
-int conn_24g_server_pair_vm_do(u8 *info, u8 info_len, u8 rw_flag)
+int conn_24g_pair_vm_do(u8 *info, u8 info_len, u8 rw_flag)
 {
     int ret;
     int vm_len = info_len;
@@ -251,9 +244,9 @@ static int conn_24g_event_packet_handler(int event, u8 *packet, u16 size, u8 *ex
         memcpy(&pair_bond_info[1], &ext_param[7], 7);
         pair_bond_info[0] = PAIR_BOND_TAG;
         put_buf(&pair_bond_info[0], 8);
-        conn_24g_server_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
+        conn_24g_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
+        conn_24g_connection_update_enable = 0;
         pair_bond_enalbe = 0;
-        __ble_state_to_user(BLE_ST_CONNECT, conn_24g_handle);
         break;
 
     case GATT_COMM_EVENT_DISCONNECT_COMPLETE:
@@ -279,14 +272,14 @@ static int conn_24g_event_packet_handler(int event, u8 *packet, u16 size, u8 *ex
                 log_info("update peer\n");
                 memcpy(&pair_bond_info[1], cur_peer_addr_info, 7);
                 pair_bond_info[0] = PAIR_BOND_TAG;
-                conn_24g_server_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
+                conn_24g_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
             }
         } else {
             log_info("first pair...\n");
 #if PAIR_BOND_ENABLE
             memcpy(&pair_bond_info[1], cur_peer_addr_info, 7);
             pair_bond_info[0] = PAIR_BOND_TAG;
-            conn_24g_server_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
+            conn_24g_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 1);
             log_info("bonding remote");
             put_buf(pair_bond_info, sizeof(pair_bond_info));
 #endif
@@ -295,11 +288,6 @@ static int conn_24g_event_packet_handler(int event, u8 *packet, u16 size, u8 *ex
 
     case GATT_COMM_EVENT_CONNECTION_UPDATE_COMPLETE:
         log_info("conn_param update_complete:%04x\n", little_endian_read_16(packet, 0));
-        break;
-
-    case GATT_COMM_EVENT_CONNECTION_PHY_UPDATE_COMPLETE:
-        log_info("PHY update_complete:%04x\n", conn_24g_handle);
-
         break;
 
     case GATT_COMM_EVENT_DIRECT_ADV_TIMEOUT:
@@ -315,14 +303,12 @@ static int conn_24g_event_packet_handler(int event, u8 *packet, u16 size, u8 *ex
 
     case GATT_COMM_EVENT_SERVER_STATE:
         log_info("server_state: handle=%02x,%02x\n", little_endian_read_16(packet, 1), packet[0]);
-        /* __ble_state_to_user(packet[0], conn_24g_handle); */
+        __ble_state_to_user(packet[0], conn_24g_handle);
         break;
 
     case GATT_COMM_EVENT_CAN_SEND_NOW:
     case GATT_COMM_EVENT_CONNECTION_UPDATE_REQUEST_RESULT:
-        break;
     case GATT_COMM_EVENT_MTU_EXCHANGE_COMPLETE:
-        log_info("con_handle= %02x, ATT MTU = %u\n", little_endian_read_16(packet, 0), little_endian_read_16(packet, 2));
         break;
 
     default:
@@ -581,7 +567,7 @@ static void conn_24g_adv_config_set(void)
     conn_24g_server_adv_config.adv_auto_do = 1;
     conn_24g_server_adv_config.adv_channel = ADV_CHANNEL_ALL;
 
-    conn_24g_server_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 0);//从vm中读取出配对绑定信息
+    conn_24g_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 0);//从vm中读取出配对绑定信息
     memcpy(conn_24g_server_adv_config.direct_address_info, &pair_bond_info[1], 7);
 
     for (unsigned i = 0; i < 7 ; ++i) {
@@ -597,7 +583,7 @@ static void conn_24g_adv_config_set(void)
         if (direct_address_flag == 7) {
             conn_24g_server_adv_config.adv_type = ADV_IND;
             conn_24g_server_adv_config.adv_interval = ADV_INTERVAL_MIN;
-            memset(conn_24g_server_adv_config.direct_address_info, 0, 7);
+            memset(conn_24g_server_adv_config.direct_address_info, 0, 8);
             log_info("===ADV_IND");
             put_buf(conn_24g_server_adv_config.direct_address_info, 7);
         } else {
@@ -623,7 +609,7 @@ void conn_24g_server_init(void)
     log_info("%s", __FUNCTION__);
 
 #if CONFIG_BT_SM_SUPPORT_ENABLE && PAIR_BOND_ENABLE
-    if (0 == conn_24g_server_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 0)) {
+    if (0 == conn_24g_pair_vm_do(pair_bond_info, sizeof(pair_bond_info), 0)) {
         log_info("server already bond dev");
         put_buf(pair_bond_info, sizeof(pair_bond_info));
         direct_adv_count = DIRECT_ADV_MAX_CNT;
@@ -633,6 +619,34 @@ void conn_24g_server_init(void)
     ble_gatt_server_set_profile(conn_24g_profile_data, sizeof(conn_24g_profile_data));
     conn_24g_adv_config_set();
 
+}
+
+void bt_ble_before_start_init(void)
+{
+    log_info("%s", __FUNCTION__);
+    ble_comm_init(&conn_24g_gatt_control_block);
+}
+
+void bt_ble_init(void)
+{
+    log_info("%s\n", __FUNCTION__);
+    ble_comm_set_config_name(bt_get_local_name(), 1);
+
+    conn_24g_server_init();//24g从机初始化
+
+    ble_module_enable(1);
+}
+
+void bt_ble_exit(void)
+{
+    log_info("%s\n", __FUNCTION__);
+    ble_module_enable(0);
+    ble_comm_exit();
+}
+
+void ble_module_enable(u8 en)
+{
+    ble_comm_module_enable(en);
 }
 
 #endif

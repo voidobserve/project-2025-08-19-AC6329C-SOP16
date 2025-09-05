@@ -1,16 +1,25 @@
+/*
+适用：
+产品ID: yxwh27s5
+品类：幻彩户外串灯-蓝牙
+协议：BLE
+DP协议转置，提取DP点有效数据
+*/
 #include "cpu.h"
 #include "led_strip_sys.h"
 #include "paint_tool.h"
 #include "dp_data_tran.h"
 #include "led_strand_effect.h"
-#include "ble_multi_profile.h"
+#include "ble_trans_profile.h"
 #include "led_strand_effect.h"
 #include "WS2812FX.H"
 #include "btstack/le/att.h"
 #include "ble_user.h"
 #include "btstack/le/ble_api.h"
-#include "led_strip_drive.h"
 #include "one_wire.h"
+
+#include "rgb_to_rgbw.h"
+
 dp_data_header_t  dp_data_header;  //涂鸦DP数据头
 dp_switch_led_t   dp_switch_led;   //DPID_SWITCH_LED开关
 dp_work_mode_t    dp_work_mode;    //DPID_WORK_MODE工作模式
@@ -100,7 +109,7 @@ unsigned short dp_extract_data_handle(unsigned char *buff)
         }
         else
         {
-            soft_turn_off_lights();
+            soft_rurn_off_lights();
         }
         break;
 
@@ -117,7 +126,7 @@ unsigned short dp_extract_data_handle(unsigned char *buff)
 
     case DPID_COLOUR_DATA://彩光(可下发可上报)
         break;
-#if 0
+
     case DPID_COUNTDOWN://倒计时(可下发可上报)
         //DP协议参数
         dp_countdown.time = buff[4];
@@ -138,7 +147,7 @@ unsigned short dp_extract_data_handle(unsigned char *buff)
         printf("\r\n");
 
         break;
-#endif
+
     case DPID_MUSIC_DATA://音乐律动(只下发)
       //DP协议参数
         dp_music_data.change_type = string_hex_Byte(&buff[4], 1);
@@ -229,697 +238,727 @@ unsigned short dp_extract_data_handle(unsigned char *buff)
           dp_draw_tool.colour.v_val = dp_draw_tool.white_b;
         }
 
-        //effect_smear_adjust_updata((smear_tool_e )dp_draw_tool.tool, &(dp_draw_tool.colour), &dp_draw_tool.led_place);
+        effect_smear_adjust_updata((smear_tool_e )dp_draw_tool.tool, &(dp_draw_tool.colour), &dp_draw_tool.led_place);
 
         break;
 
   }
   return (dp_data_header.len + sizeof(dp_data_header_t));
 }
+u8 Ble_Addr[6];
 
-u8 Ble_Addr[6]; //蓝牙地址
-extern hci_con_handle_t ZD_HCI_handle;
-
-
-extern ALARM_CLOCK alarm_clock[3];
-extern TIME_CLOCK time_clock;
-
-
-
-/**
- * @brief 向app反馈信息
- *
- * @param p   数据内容
- * @param len  数据长度
- */
-void zd_fb_2_app(u8 *p, u8 len)
-{
-    uint8_t fc_buffer[20];            //发送缓存
-    memcpy(fc_buffer,Ble_Addr, 6);
-    memcpy(fc_buffer+6, p, len);
-    ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, fc_buffer, len+6, ATT_OP_AUTO_READ_CCC);
-}
-
-
-
-/*********************************************************
- *
- *      APP反馈 API
- *
- *********************************************************/
-/**
- * @brief 向app反馈灯开关状态
- *
- */
-void fb_led_on_off_state(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x01;
-    tp_buffer[1] = 0x01;
-    tp_buffer[2] = fc_effect.on_off_flag; //
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-/**
- * @brief 反馈音乐模式
- *
- */
-void fb_led_music_mode(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x06;
-    tp_buffer[1] = 0x06;
-    tp_buffer[2] = fc_effect.music.m ;//
-
-    zd_fb_2_app(tp_buffer, 3);
-}
-
-
-/**
- * @brief 反馈流星速度
- *
- */
-void fd_meteor_speed(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x01;
-    tp_buffer[2] = fc_effect.app_star_speed;
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-
-/**
- * @brief 反馈流星周期
- *
- */
-void fd_meteor_cycle(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x03;
-    tp_buffer[2] = fc_effect.meteor_period;
-
-    zd_fb_2_app(tp_buffer, 3);
-}
-
-/**
- * @brief 反馈流星开关
- *
- */
-void fd_meteor_on_off(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x02;
-    tp_buffer[2] =  fc_effect.star_on_off;
-
-    zd_fb_2_app(tp_buffer, 3);
-}
-
-
-void fb_bright(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x04;
-    tp_buffer[1] = 0x03;
-    tp_buffer[2] = fc_effect.app_b;
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-
-void fb_guding_bright(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x04;
-    tp_buffer[1] = 0x03;
-    tp_buffer[2] = 0x64;
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-
-
-void fb_speed(void)
-{
-
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x04;
-    tp_buffer[1] = 0x04;
-    tp_buffer[2] = fc_effect.app_speed;
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-
-void fb_sensitive(void)
-{
-
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x05;
-    tp_buffer[2] = 100 - fc_effect.music.s;
-
-    zd_fb_2_app(tp_buffer, 3);
-
-}
-
-void fb_rgb_value(void)
-{
-
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x04;
-    tp_buffer[1] = 0x01;
-    tp_buffer[2] = 0x1e;
-    tp_buffer[3] = fc_effect.rgb.r;
-    tp_buffer[4] = fc_effect.rgb.g;
-    tp_buffer[5] = fc_effect.rgb.b;
-
-    zd_fb_2_app(tp_buffer, 6);
-
-
-}
-
-
-
-
-void fb_RGBsequence(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x04;
-    tp_buffer[1] = 0x05;
-    tp_buffer[2] = fc_effect.sequence;
-    zd_fb_2_app(tp_buffer, 6);
-}
-
-
-/**
- * @brief 反馈电机速度
- *
- */
-void fb_motor_speed(void)
-{
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x07;
-    tp_buffer[2] = fc_effect.base_ins.period;
-    zd_fb_2_app(tp_buffer, 6);
-
-}
-
-
-/**
- * @brief 反馈电机模式
- *
- */
-void fb_motor_mode(void)
-{
-
-
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x06;
-    tp_buffer[2] = fc_effect.base_ins.mode;
-    zd_fb_2_app(tp_buffer, 6);
-
-}
-
-/**
- * @brief 反馈电机模式
- *
- */
-void fb_motor_switch(void)
-{
-
-
-    uint8_t tp_buffer[6];
-    tp_buffer[0] = 0x2F;
-    tp_buffer[1] = 0x08;
-    tp_buffer[2] = fc_effect.motor_on_off;
-    zd_fb_2_app(tp_buffer, 6);
-
-}
+extern int app_send_user_data(u16 handle, u8 *data, u16 len, u8 handle_type);
+extern hci_con_handle_t fd_handle;
 /* 解析中道数据，主要是静态模式，和动态效果的“基本”效果 */
 void parse_zd_data(unsigned char *LedCommand)
 {
-    uint8_t Send_buffer[20];        //发送缓存
+  uint8_t Send_buffer[50];        //发送缓存
+
+  if(LedCommand[0] == 0x01 && LedCommand[1] == 0x03)  //与APP同步数据
+  {
+    printf(" fc_effect.music.m_type = %d",  fc_effect.music.m_type);
+    // ble_user_send_version();
     memcpy(Send_buffer,Ble_Addr, 6);
-    if(LedCommand[0] == 0x01 && LedCommand[1] == 0x03)  //与APP同步数据
-    {
-//灯光
-        // -----------------设备信息------------------------------
-        Send_buffer[6] = 0x07;
-        Send_buffer[7] = 0x01;
-        Send_buffer[8] = 0x01;
-        Send_buffer[9] = 0x02;  //灯具类型：RGBW
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 10, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-        //-------------------发送开关机状态---------------------------
-        Send_buffer[6] = 0x01;
-        Send_buffer[7] = 0x01;
-        Send_buffer[8] = get_on_off_state(); // 目前状态
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
+    // -----------------设备信息
+    Send_buffer[6] = 0x07;
+    Send_buffer[7] = 0x01;
+    Send_buffer[8] = 0x01;
+    // Send_buffer[9] = 0x01;  //灯具类型：RGB
+    Send_buffer[9] = 0x02;  //灯具类型：RGBW
+    printf("\n rgb");
+    int result =   ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 10, ATT_OP_AUTO_READ_CCC);
+    printf("result = %d", result);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,10, ATT_OP_AUTO_READ_CCC);
+    //-------------------发送开关机状态---------------------------
+    Send_buffer[6] = 0x01;
+    Send_buffer[7] = 0x01;
+    //当前状态
+    // if(led_state.OpenorCloseflag == OPEN_STATE)
+    Send_buffer[8] = fc_effect.on_off_flag;
+    // else if(led_state.OpenorCloseflag == CLOSE_STATE)
+    //     Send_buffer[8] = 0;
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------发送亮度---------------------------
+    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x03;
+    Send_buffer[8] = fc_effect.b*100/pre_max_bright;
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------发送速度---------------------------
+    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x04;
+    Send_buffer[8] = (500 - fc_effect.dream_scene.speed) / 5;
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
 
-        //-------------------发送亮度---------------------------
-        Send_buffer[6] = 0x04;
-        Send_buffer[7] = 0x03;
-        Send_buffer[8] = fc_effect.app_b;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
+    os_time_dly(1);
+    //-------------------发送灯带长度---------------------------
+    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x08;
+    Send_buffer[8] = fc_effect.led_num>>8;
+    Send_buffer[9] = fc_effect.led_num&0xff;
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,10, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------灵敏度---------------------------
+    Send_buffer[6] = 0x2F;
+    Send_buffer[7] = 0x05;
+    Send_buffer[8] = fc_effect.music.s;
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------本地麦克风---------------------------
+    Send_buffer[6] = 0x06;
+    Send_buffer[7] = 0x06;
+    Send_buffer[8] = fc_effect.music.m;
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    //-------------------发送RGB接口模式--------------------------
+    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x05;
+    Send_buffer[8] =  fc_effect.sequence;
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
 
-        //-------------------发送速度---------------------------
-        Send_buffer[6] = 0x04;
-        Send_buffer[7] = 0x04;
-        Send_buffer[8] = fc_effect.app_speed;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送灯带长度---------------------------
-        Send_buffer[6] = 0x04;
-        Send_buffer[7] = 0x08;
-        Send_buffer[8] = fc_effect.led_num>>8;
-        Send_buffer[9] = fc_effect.led_num&0xff;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 10, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-       //-------------------发送灵敏度---------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x05;
-        Send_buffer[8] = fc_effect.music.s;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送静态RGB模式--------------------------
-        Send_buffer[6] = 0x04;
-        Send_buffer[7] = 0x01;
-        Send_buffer[8] = 0x1e;
-        Send_buffer[9] = fc_effect.rgb.r;
-        Send_buffer[10] = fc_effect.rgb.g;
-        Send_buffer[11] = fc_effect.rgb.b;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 12, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送闹钟1定时数据--------------------------
-        Send_buffer[6] = 0x05;
-        Send_buffer[7] = 0x00;
-        Send_buffer[8] = alarm_clock[0].hour;
-        Send_buffer[9] = alarm_clock[0].minute;
-        Send_buffer[10] = alarm_clock[0].on_off;
-        Send_buffer[11] = alarm_clock[0].mode;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 12, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送闹钟2定时数据--------------------------
-        Send_buffer[6] = 0x05;
-        Send_buffer[7] = 0x01;
-        Send_buffer[8] = alarm_clock[1].hour;
-        Send_buffer[9] = alarm_clock[1].minute;
-        Send_buffer[10] = alarm_clock[1].on_off;
-        Send_buffer[11] = alarm_clock[1].mode;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 12, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送闹钟3定时数据--------------------------
-        Send_buffer[6] = 0x05;
-        Send_buffer[7] = 0x02;
-        Send_buffer[8] = alarm_clock[2].hour;
-        Send_buffer[9] = alarm_clock[2].minute;
-        Send_buffer[10] = alarm_clock[2].on_off;
-        Send_buffer[11] = alarm_clock[2].mode;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 12, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------发送RGB接口模式--------------------------
-        Send_buffer[6] = 0x04;
-        Send_buffer[7] = 0x05;
-        Send_buffer[8] = fc_effect.sequence;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-        //-------------------声控模式（手机麦或外麦--------------------------
-        Send_buffer[6] = 0x06;
-        Send_buffer[7] = 0x07;
-        Send_buffer[8] = fc_effect.music.m_type;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-        //-------------------本地麦克风模式--------------------------
-        Send_buffer[6] = 0x06;
-        Send_buffer[7] = 0x06;
-        Send_buffer[8] = fc_effect.music.m ;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-//流星
-
-        //-------------------流星开关--------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x02;
-        Send_buffer[8] = fc_effect.star_on_off;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-        //-------------------流星速度--------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x01;
-        Send_buffer[8] = fc_effect.app_star_speed ;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-        //-------------------流星周期--------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x03;
-        Send_buffer[8] = fc_effect.meteor_period;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-
-//电机
-
-        //-------------------电机速度--------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x07;
-        Send_buffer[8] = fc_effect.base_ins.period;
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
-
+    os_time_dly(1);
+   //-------------------声控模式（手机麦或外麦--------------------------
+    Send_buffer[6] = 0x06;
+    Send_buffer[7] = 0x07;
+    Send_buffer[8] = fc_effect.music.m_type;
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------电机转速--------------------------
+    extern base_ins_t base_ins;
+    Send_buffer[6] = 0x2F;
+    Send_buffer[7] = 0x07;
+    Send_buffer[8] = fc_effect.base_ins.period;
+    // int ret = app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
     //-------------------电机开关--------------------------
-        Send_buffer[6] = 0x2F;
-        Send_buffer[7] = 0x08;
-        Send_buffer[8] = fc_effect.motor_on_off;
-        // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
-        ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-        os_time_dly(1);
-
+    extern base_ins_t base_ins;
+    Send_buffer[6] = 0x2F;
+    Send_buffer[7] = 0x08;
+    Send_buffer[8] = fc_effect.base_ins.motor_on_off;
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+  
+    //-------------------发送工作模式---------------------------
+ /*    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x02;
+    if(led_state.running_task == DYNAMIC_TASK)
+    {
+        Send_buffer[8] = led_state.dynamic_state_flag;    //发送动态模式
+        app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
     }
-    else
+    else if(led_state.running_task == STATIC_TASK)
+    {
+        Send_buffer[8] = led_state.static_state_flag;     //发送静态模式
+        app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+    }
+    os_time_dly(1); */
+    //-------------------发送静态RGB模式--------------------------
+    #if 0
+    Send_buffer[6] = 0x04;
+    Send_buffer[7] = 0x01;
+    Send_buffer[8] = 0x1e;
+    Send_buffer[9] = led_state.R_flag;
+    Send_buffer[10] = led_state.G_flag;
+    Send_buffer[11] = led_state.B_flag;
+    app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,12, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    
+    //-------------------发送闹钟1定时数据--------------------------
+    Send_buffer[6] = 0x05;
+    Send_buffer[7] = 0x00;
+    Send_buffer[8] = alarm_clock[0].hour;
+    Send_buffer[9] = alarm_clock[0].minute;
+    Send_buffer[10] = alarm_clock[0].on_off;
+    Send_buffer[11] = alarm_clock[0].mode;
+    app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,12, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------发送闹钟2定时数据--------------------------
+    Send_buffer[6] = 0x05;
+    Send_buffer[7] = 0x01;
+    Send_buffer[8] = alarm_clock[1].hour;
+    Send_buffer[9] = alarm_clock[1].minute;
+    Send_buffer[10] = alarm_clock[1].on_off;
+    Send_buffer[11] = alarm_clock[1].mode;
+    app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,12, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    //-------------------发送闹钟3定时数据--------------------------
+    Send_buffer[6] = 0x05;
+    Send_buffer[7] = 0x02;
+    Send_buffer[8] = alarm_clock[2].hour;
+    Send_buffer[9] = alarm_clock[2].minute;
+    Send_buffer[10] = alarm_clock[2].on_off;
+    Send_buffer[11] = alarm_clock[2].mode;
+    app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,12, ATT_OP_AUTO_READ_CCC);
+    os_time_dly(1);
+    #endif
+  }
+
+
+  {
+    //---------------------------------接收到开灯命令-----------------------------------
+    if(LedCommand[0]==0x01 && LedCommand[1]==0x01)
+    {
+      printf("\n switch ins");
+      extern void set_on_off_led(u8 on_off);
+      set_on_off_led(LedCommand[2]);
+    }
+    //---------------------------------接收到时间数据，无需返回应答-----------------------------------
+    if(LedCommand[0]==0x06 && LedCommand[1]==0x02)
+    {
+        /* time_clock.hour = LedCommand[2];     //更新时间数据
+        time_clock.minute = LedCommand[3];
+        time_clock.second = LedCommand[4];
+        time_clock.week = LedCommand[5]; */
+    }
+
+    if(fc_effect.on_off_flag == DEVICE_ON)
     {
 
-        //---------------------------------接收到开关灯命令-----------------------------------
-        if(LedCommand[0]==0x01 && LedCommand[1] == 0x01)
+        //---------------------------------动态处理-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x02 && LedCommand[2]>=0x07 )
         {
 
-            extern void set_on_off_led(u8 on_off);
-            set_on_off_led(LedCommand[2]);
-            Send_buffer[6] = 0x01;
-            Send_buffer[7] = 0x01;
+            switch(LedCommand[2])
+            {
+
+                case 0x07:  //3色跳变
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    fc_effect.dream_scene.change_type = MODE_JUMP;
+                    fc_effect.dream_scene.c_n = 3;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x08:  //7色跳变
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    ls_set_color(3, WHITE);
+                    ls_set_color(4, YELLOW);
+                    ls_set_color(5, CYAN);
+                    ls_set_color(6, PURPLE);
+                    fc_effect.dream_scene.change_type = MODE_JUMP;
+                    fc_effect.dream_scene.c_n = 7;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x09:  //3色渐变
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_GRADUAL;
+                    fc_effect.dream_scene.c_n = 3;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x0A:  //七彩渐变
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    ls_set_color(3, WHITE);
+                    ls_set_color(4, YELLOW);
+                    ls_set_color(5, CYAN);
+                    ls_set_color(6, PURPLE);
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_GRADUAL;
+                    fc_effect.dream_scene.c_n = 7;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x0B:
+                    ls_set_color(0, RED);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x0c:
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x0D:
+                    ls_set_color(0, GREEN);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x0E:
+                    ls_set_color(0, CYAN);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x0F:
+                    ls_set_color(0, YELLOW);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x10:
+                    ls_set_color(0, PURPLE);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x11:
+            //纯白光呼吸
+                    // fc_effect.dream_scene.change_type = MODE_BREATH_W;
+                    // fc_effect.Now_state = IS_light_scene;
+                    //混白光呼吸
+                    ls_set_color(0, WHITE);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+
+                case 0x12:
+                    ls_set_color(0, RED);
+                    ls_set_color(1, GREEN);
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_GRADUAL;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x13:
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, RED);
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_GRADUAL;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x14:
+                    ls_set_color(0, GREEN);
+                    ls_set_color(1, BLUE);
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_GRADUAL;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x15:  //七色频闪
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    ls_set_color(3, WHITE);
+                    ls_set_color(4, YELLOW);
+                    ls_set_color(5, CYAN);
+                    ls_set_color(6, PURPLE);
+
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 7;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+
+                case 0x16:
+                    ls_set_color(0, RED);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+
+                case 0x17:
+                    ls_set_color(0, BLUE);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+
+                case 0x18:
+                    ls_set_color(0, GREEN);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+                case 0x19:
+
+                    ls_set_color(0, CYAN);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+
+                case 0x1a:
+
+                    ls_set_color(0, YELLOW);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+                case 0x1B:
+
+                    ls_set_color(0, PURPLE);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+
+                    break;
+                case 0x1C:
+                    ls_set_color(0, WHITE);
+                    fc_effect.dream_scene.change_type = MODE_STROBE;
+                    fc_effect.dream_scene.c_n = 1;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x1D:
+                    printf("\n 0x1D");
+                    ls_set_color(0, RED);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x1E:
+                    printf("\n 0x1E");
+                    ls_set_color(0, GREEN);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x1F:
+                    printf("\n 0x1F");
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x20:
+                    printf("\n 0x20");
+                    // fc_effect.dream_scene.change_type = MODE_BREATH_W;
+                    // fc_effect.Now_state = IS_light_scene;
+
+                    //混白光呼吸
+                    ls_set_color(0, WHITE);
+                    ls_set_color(1, BLACK);
+                    fc_effect.dream_scene.change_type = MODE_SINGLE_C_BREATH;
+                    fc_effect.dream_scene.c_n = 2;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+                case 0x21:
+                    printf("\n 0x21");
+                    fc_effect.w = 0;
+                    ls_set_color(0, BLUE);
+                    ls_set_color(1, GREEN);
+                    ls_set_color(2, RED);
+                    ls_set_color(3, YELLOW);
+                    ls_set_color(4, CYAN);
+                    ls_set_color(5, MAGENTA);
+                    // ls_set_color(6, WHITE);
+                    fc_effect.dream_scene.c_n = 6;
+                    fc_effect.dream_scene.change_type = MODE_MUTIL_C_BREATH;
+                    fc_effect.Now_state = IS_light_scene;
+                    break;
+
+                case 0x22:  //蓝白呼吸
+                    // fc_set_style_custom();
+                    // fc_effect.custom_index = 1;
+                    // WS2812FX_stop();
+
+
+
+
+                    break;
+                case 0x23:  //蓝白渐变
+                    // fc_set_style_custom();
+                    // fc_effect.custom_index = 2;
+                    // WS2812FX_stop();
+
+
+                    
+                    break;
+                case 0x24:  //蓝色呼吸，白色呼吸，蓝白呼吸
+                    // fc_set_style_custom();
+                    // fc_effect.custom_index = 3;
+                    // WS2812FX_stop();
+                    break;
+
+
+
+
+
+
+
+
+            }
+            set_fc_effect();
+            save_user_data_area3();
+
+        }
+        //---------------------------------静态任务处理-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x02 && LedCommand[2]>=0 && LedCommand[2]<0x07)
+        {
+            switch(LedCommand[2])
+            {
+                case 0:  fc_static_effect(0);   //R
+                    break;
+                case 1:  fc_static_effect(2);   //B
+                    break;
+                case 2:  fc_static_effect(1);   //G
+                    break;
+                case 3:  fc_static_effect(5);   //CYAN
+                    break;
+                case 4:  fc_static_effect(4);   //YELLOW
+                    break;
+                case 5:  fc_static_effect(9);   //PURPLE
+                    break;
+                // case 6:  fc_static_effect(3);   //w
+                //     break;
+                case 6:  set_static_mode(0xFF, 0xFF, 0xFF); // w 白色
+                    break;
+            }
+
+        }
+        //---------------------------------更新RGB-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x01 && LedCommand[2]==0x1e)
+        {
+            // extern void set_static_mode(u8 r, u8 g, u8 b);
+            // set_static_mode(LedCommand[3], LedCommand[4], LedCommand[5]);
+            // save_user_data_area3();
+
+            extern void set_static_mode(u8 r, u8 g, u8 b);
+            // //实现白光时，使用W控制，只有单色白光
+            // if(LedCommand[3] == 0xFF && LedCommand[4] == 0xFF && LedCommand[5] == 0xFF)
+            // {
+            //     fc_effect.w = 255;
+            //     fc_effect.b = 100;
+            // }
+            // else
+            //     fc_effect.w = 0; //必须要配置，不配置，无法调节RBG效果
+            // set_static_mode(LedCommand[3], LedCommand[4], LedCommand[5]); //配好颜色，在service中会调回PWM驱动修改颜色
+
+            // 这样调节灯光可能会偏白
+            rgb_to_rgbw_improved(LedCommand[3], LedCommand[4], LedCommand[5], &fc_effect.rgb.r, &fc_effect.rgb.g, &fc_effect.rgb.b, &fc_effect.rgb.w);
+            fc_effect.Now_state = IS_STATIC;
+            set_fc_effect();
+
+            
+            
+            save_user_data_area3();
+
+
+
+        }
+        //---------------------------------调节亮度-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x03 )
+        {
+            extern void set_bright(u8 b);
+            set_bright(LedCommand[2]);
+            save_user_data_area3();
+            Send_buffer[6] = 0x04;
+            Send_buffer[7] = 0x03;
             Send_buffer[8] = LedCommand[2];
-            ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+             
+            // led_state.ledlight_temp = LedCommand[2];
+            // led_state.ledlight = (Light_Max-Light_Min)*led_state.ledlight_temp/100+Light_Min;
+            // if(led_state.running_task == STATIC_TASK)
+            //     display_led();
+            // LED_state_write_flash();    //保存LED状态
         }
-
-        #if 0
-        //---------------------------------接收到设备时间数据，无需返回应答-----------------------------------
-        if(LedCommand[0]==0x06 && LedCommand[1]==0x02)
+        //---------------------------------调节速度-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x04 )
         {
-
-            time_clock.hour = LedCommand[2];     //更新时间数据
-            time_clock.minute = LedCommand[3];
-            time_clock.second = LedCommand[4];
-            time_clock.week = LedCommand[5];
-
-        }
-        //-----------------------------------接收到闹钟数据-----------------------------------------
-        if(LedCommand[0]==0x05)
-        {
-
-
-            Send_buffer[6] = 0x05;
-            Send_buffer[7] = LedCommand[1]; //闹钟序号
+            // 范围0-100
+            ls_set_speed(LedCommand[2]);
+            save_user_data_area3();
+            Send_buffer[6] = 0x04;
+            Send_buffer[7] = 0x04;
             Send_buffer[8] = LedCommand[2];
-            Send_buffer[9] = LedCommand[3];
-            Send_buffer[10] = LedCommand[4];
-            Send_buffer[11] = LedCommand[5];
-            ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 12, ATT_OP_AUTO_READ_CCC);
-
-
-            if(LedCommand[1]==0x00)
-            {
-                alarm_clock[0].hour = LedCommand[2];
-                alarm_clock[0].minute = LedCommand[3];
-                alarm_clock[0].on_off = LedCommand[4];
-                alarm_clock[0].mode = LedCommand[5];
-                parse_alarm_data(0);
-
-            }
-            if(LedCommand[1]==0x01)
-            {
-                alarm_clock[1].hour = LedCommand[2];
-                alarm_clock[1].minute = LedCommand[3];
-                alarm_clock[1].on_off = LedCommand[4];
-                alarm_clock[1].mode = LedCommand[5];
-                parse_alarm_data(1);
-            }
-            if(LedCommand[1]==0x02)
-            {
-                alarm_clock[2].hour = LedCommand[2];
-                alarm_clock[2].minute = LedCommand[3];
-                alarm_clock[2].on_off = LedCommand[4];
-                alarm_clock[2].mode = LedCommand[5];
-                parse_alarm_data(2);
-            }
-
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
 
         }
-        #endif
-        //--------------------------下面所有的操作都需要在开灯状态下操作-----------------------------------
-
-        if(get_on_off_state())
+        //---------------------------------更改RGB接口-----------------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x05 )
         {
-            //---------------------------------更新RGB-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x01 && LedCommand[2]==0x1e)
-            {
-
-                set_static_mode(LedCommand[3], LedCommand[4], LedCommand[5]);
-                fb_rgb_value();
-            }
-            //---------------------------------静态（模式）任务处理-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x02 && LedCommand[2]>=0 && LedCommand[2]<0x07)
-            {
-
-                switch(LedCommand[2])
-                {
-                    case 0:  set_static_mode((RED>>16)&0xff,(RED>>8)&0xff,(RED>>0)&0xff); break; //R
-
-                    case 1:  set_static_mode((BLUE>>16)&0xff,(BLUE>>8)&0xff,(BLUE>>0)&0xff); break; //B
-
-                    case 2:  set_static_mode((GREEN>>16)&0xff,(GREEN>>8)&0xff,(GREEN>>0)&0xff);  break; //G
-
-                    case 3:  set_static_mode((CYAN>>16)&0xff,(CYAN>>8)&0xff,(CYAN>>0)&0xff);  break; //CYAN
-
-                    case 4:  set_static_mode((YELLOW>>16)&0xff,(YELLOW>>8)&0xff,(YELLOW>>0)&0xff); break; //YELLOW
-
-                    case 5:  set_static_mode((PURPLE>>16)&0xff,(PURPLE>>8)&0xff,(PURPLE>>0)&0xff);  break; //PURPLE
-
-                    case 6:  set_static_mode((WHITE>>16)&0xff,(WHITE>>8)&0xff,(WHITE>>0)&0xff); break; //WHITE
-                }
-
-
-            }
-            //---------------------------------动态处理-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x02 && LedCommand[2]>=0x07 && LedCommand[2]<=0x24)
-            {
-
-                base_Dynamic_Effect(LedCommand[2]);
-
-            }
-            //---------------------------------调节亮度0-100-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x03 )
-            {
-                extern void app_set_bright(u8 tp_b);
-                app_set_bright(LedCommand[2]);
-                fb_bright();
-            }
-            //---------------------------------调节速度0-100-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x04 )
-            {
-                // 范围0-100
-                extern void app_set_speed(u8 tp_speed);
-                app_set_speed(LedCommand[2]);
-                fb_speed();
-
-            }
-            //---------------------------------更改RGB接口-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x05 )
-            {
-                extern void app_set_RGBsequence(u8 s);
-                app_set_RGBsequence(LedCommand[2]);
-                fb_RGBsequence();
-
-            }
-            //---------------------------------W（灰度调节）控制----------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x06)
-            {
-                extern void app_set_w(u8 tp_w);
-                app_set_w(LedCommand[2]);
-
-            }
-            //---------------------------------灯带长度-----------------------------------
-            if(LedCommand[0]==0x04 && LedCommand[1]==0x08 )
-            {
-
-
-            }
-            //---------------------------------手机音乐律动 手机麦克风-----------------------------------
-            if(LedCommand[0]==0x06 && LedCommand[1]==0x04 )
-            {
-
-                if(fc_effect.music.m_type == PHONE_MIC)  //手机麦模式
-                {
-                    app_set_bright(LedCommand[5]);
-                    set_static_mode(LedCommand[2], LedCommand[3], LedCommand[4]);
-                }
-
-            }
-            //---------------------------------外麦声控模式-----------------------------------
-            if(LedCommand[0]==0x06 && LedCommand[1]==0x06 )
-            {
-                extern void app_set_music_mode(u8 tp_m);
-                if( fc_effect.music.m_type == EXTERIOR_MIC)  //外模模式
-                {
-                    app_set_music_mode(LedCommand[2]);
-                    Send_buffer[6] = 0x06;
-                    Send_buffer[7] = 0x06;
-                    Send_buffer[8] = LedCommand[2];
-                    ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-                }
-
-            }
-
-            //---------------------------------设备手机麦或者外麦-----------------------------------
-            if(LedCommand[0]==0x06 && LedCommand[1]==0x07)
-            {
-                extern void set_music_type(u8 ty);
-                set_music_type(LedCommand[2]);
-                Send_buffer[6] = 0x06;
-                Send_buffer[7] = 0x07;
-                Send_buffer[8] = LedCommand[2];
-                ble_comm_att_send_data(ZD_HCI_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
-            }
-
-            //---------------------------------设置麦克风灵，电机，流星敏度-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x05 )
-            {
-                //值越小越灵敏
-                app_set_sensitive(100 - LedCommand[2]);
-                fb_sensitive();
-
-            }
-
-//--------------------------  流星相关 ----------------------------------------------
-
-            // --------------------------------流星模式-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x00  && fc_effect.star_on_off == DEVICE_ON)
-            {
-
-                // app_set_mereor_mode(LedCommand[2]);
-
-            }
-            //-------------------------------- 流星速度-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x01  && fc_effect.star_on_off == DEVICE_ON)
-            {
-
-                // app_set_mereor_speed(LedCommand[2]);
-                // fd_meteor_speed();
-            }
-            //-------------------------------- 流星开关-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x02)
-            {
-
-                // app_set_on_off_meteor(LedCommand[2]);
-                // fd_meteor_on_off();
-
-            }
-
-            // --------------------------------流星灯时间间隔-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x03 && fc_effect.star_on_off == DEVICE_ON)
-            {
-
-                // app_set_meteor_pro(LedCommand[2]);
-                // fd_meteor_cycle();
-            }
-
-            // ---------------------------------设置电机模式-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x06 )
-            {
-              
-                // extern void one_wire_set_mode(u8 m);
-                // extern void enable_one_wire(void);
-                // one_wire_set_mode(LedCommand[2]); //配置模式
-                // os_time_dly(1);
-                // enable_one_wire();  //使用发送数据
-     
-                // if(LedCommand[2] == 6)
-                // {
-                //     fc_effect.motor_on_off = DEVICE_OFF;
-                  
-                // }else{
-                //     fc_effect.motor_on_off = DEVICE_ON;
-                // }
-
-                // fb_motor_mode();
-
-            }
-
-            // --------------------------------设置电机转速-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x07 )
-            {
-                extern void one_wire_set_period(u8 p);
-                one_wire_set_period(LedCommand[2]);
-                enable_one_wire();
-                os_time_dly(4);
-                enable_one_wire();
-                fb_motor_speed();
-
-            }
-            // --------------------------------设置电机开关-----------------------------------
-            if(LedCommand[0]==0x2F && LedCommand[1]==0x08 )
-            {
-
-                if(fc_effect.motor_on_off == DEVICE_OFF) //开电机
-                {
-                    fc_effect.motor_on_off = DEVICE_ON;
-                    extern void one_wire_set_mode(u8 m);
-                    one_wire_set_mode(4); //配置模式 360转
-                    enable_one_wire();
-                    os_time_dly(4);
-                    enable_one_wire();
-
-                    fb_motor_switch();
-                }
-                else
-                {
-                    extern void one_wire_set_mode(u8 m);
-                    fc_effect.motor_on_off = DEVICE_OFF;
-                    one_wire_set_mode(6); //配置模式 停止
-                    enable_one_wire();
-                    os_time_dly(4);
-                    enable_one_wire();
-                    fb_motor_switch();
-                }
-
-            }
-
+            extern void set_rgb_sequence(u8 s);
+            // set_rgb_sequence(LedCommand[2]);
+            extern void set_rgbw_sequence(u8 s);
+            set_rgbw_sequence(LedCommand[2]);
+            save_user_data_area3();
+            Send_buffer[6] = 0x04;
+            Send_buffer[7] = 0x05;
+            Send_buffer[8] = LedCommand[2];
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
 
         }
+        //---------------------------------W（灰度调节）控制----------------------------
+        if(LedCommand[0]==0x04 && LedCommand[1]==0x06)
+        {
+            extern void set_w(u8 w);
+            printf("\n =%d",LedCommand[2]*255/100);
+            set_w(LedCommand[2]*255/100);
+            save_user_data_area3();  //保存参数配置到flash、
+        }
+        //---------------------------------声控-----------------------------------
+        // if(LedCommand[0]==0x2F && LedCommand[1]==0x04 )
+        if(LedCommand[0]==0x06 && LedCommand[1]==0x06 )
+        {
+            // void set_local_mic_mode(u8 m);
+            // set_local_mic_mode(LedCommand[2]);
+            extern void set_music_mode(u8 m);
+            set_music_mode(LedCommand[2]);      
+            save_user_data_area3();  //保存参数配置到flash、
+            Send_buffer[6] = 0x06;
+            Send_buffer[7] = 0x06;
+            Send_buffer[8] = LedCommand[2];
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+
+        }
+        // 灵敏度
+        if(LedCommand[0]==0x2F && LedCommand[1]==0x05 )
+        {
+            // extern void set_sensitive(u8 s);
+            // // 实际是反相的
+            // set_sensitive(100 - LedCommand[2]);
+            extern void set_music_sensitive(u8 s);
+            set_music_sensitive(LedCommand[2]);
+            Send_buffer[6] = 0x2F;
+            Send_buffer[7] = 0x05;
+            Send_buffer[8] = LedCommand[2];
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+                
+        }
+        //手机麦克风
+        if(LedCommand[0]==0x06 && LedCommand[1]==0x04 )
+        {
+            extern void set_static_mode(u8 r, u8 g, u8 b);
+            set_bright(LedCommand[5]);
+            set_static_mode(LedCommand[2], LedCommand[3], LedCommand[4]);
+        }    
+        //---------------------------------设备手机麦或者外麦-----------------------------------
+        if(LedCommand[0]==0x06 && LedCommand[1]==0x07)
+        {
+            extern void set_music_type(u8 ty);
+            set_music_type(LedCommand[2]);
+            save_user_data_area3();  //保存参数配置到flash、
+            Send_buffer[6] = 0x06;
+            Send_buffer[7] = 0x07;
+            Send_buffer[8] = LedCommand[2];
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+        }
+        // --------------------------------设置电机转速-----------------------------------
+        if(LedCommand[0]==0x2F && LedCommand[1]==0x07 )
+        {
+            extern void one_wire_set_period(u8 p);
+            one_wire_set_period(LedCommand[2]);
+            os_time_dly(1);
+            enable_one_wire();
+            save_user_data_area3();//保存参数配置到flash、
+            Send_buffer[6] = 0x2F;
+            Send_buffer[7] = 0x07;
+            Send_buffer[8] = LedCommand[2];
+            // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+            ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+            
+        }
+        // --------------------------------设置电机开关-----------------------------------
+        if(LedCommand[0]==0x2F && LedCommand[1]==0x08 )
+        {
+            if(fc_effect.base_ins.motor_on_off == 0) //开电机
+            {
+                extern void one_wire_set_mode(u8 m);
+                //extern void enable_one_wire(void);
+                one_wire_set_mode(4); //配置模式 360转
+                os_time_dly(1);
+                enable_one_wire();  //使用发送数据
+                save_user_data_area3();//保存参数配置到flash、
+                Send_buffer[6] = 0x2F;
+                Send_buffer[7] = 0x08;
+                Send_buffer[8] = 0x01;
+                // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+                ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+
+                fc_effect.base_ins.motor_on_off = 1;
+                fc_effect.motor_on_off = DEVICE_ON;
+            }
+            else
+            {
+                extern void one_wire_set_mode(u8 m);
+                //extern void enable_one_wire(void);
+                one_wire_set_mode(6); //配置模式 停止
+                os_time_dly(1);
+                enable_one_wire();  //使用发送数据
+                save_user_data_area3();//保存参数配置到flash、
+                Send_buffer[6] = 0x2F;
+                Send_buffer[7] = 0x08;
+                Send_buffer[8] = 0x00;
+                // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,9, ATT_OP_AUTO_READ_CCC);
+                ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, 9, ATT_OP_AUTO_READ_CCC);
+                fc_effect.base_ins.motor_on_off = 0;
+                fc_effect.motor_on_off = DEVICE_OFF;
+            }
+
+        }
+
+
+
     }
+  }
 }
 
+void tuya_fb_sw_state(void);
 
+void respond_led_strip_dp_query(void)
+{
+  int res;
+  u8 buf[]={DPID_WORK_MODE,	4,	0	,1,	1}; //涂抹模式
+
+}
 
 /* APP数据解析入口函数 */
 void parse_led_strip_data(u8 *pBuf, u8 len)
 {
+  // 重复解析协议此时，避免卡死
+  u8 retry = 0;
+  led_strip_t strip;
+
+  u16 handler_len;
+
+  unsigned char num = 0;
 
   /* 涂鸦DP协议解析 */
-    dp_extract_data_handle(pBuf);
+  handler_len = dp_extract_data_handle(pBuf);
   /* 中道孔明灯协议解析 */
-    parse_zd_data(pBuf);
   /* 为兼容全彩的协议 */
 
 
-   save_user_data_area3();
+  save_user_data_area3();
 }
 
 
@@ -931,6 +970,7 @@ void tuya_fb_sw_state(void)
     p_dp->id = DPID_SWITCH_LED;
     p_dp->type = DP_TYPE_BOOL;
     p_dp->len = __SWP16(1);
+    // dp_data[4] = fc_effect.on_off_flag;
     dp_data[4] = 1; //默认开机
 
 
@@ -938,10 +978,20 @@ void tuya_fb_sw_state(void)
 
 
 
-
-
-
-
+/**
+ * @brief 向app反馈信息
+ * 
+ * @param p   数据内容
+ * @param len  数据长度
+ */
+void zd_fb_2_app(u8 *p, u8 len)
+{
+    uint8_t Send_buffer[50];            //发送缓存
+    memcpy(Send_buffer,Ble_Addr, 6);
+    memcpy(Send_buffer+6, p, len);
+    // app_send_user_data(ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer,len+6, ATT_OP_AUTO_READ_CCC);
+    ble_comm_att_send_data(fd_handle, ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE, Send_buffer, len+6, ATT_OP_AUTO_READ_CCC);
+}
 
 
 /* -------------------------------------DPID_CONTROL_DATA 调节模式----------------------------- */

@@ -14,7 +14,6 @@
 #include "spp_at_trans.h"
 #include "ble_at_com.h"
 #include "ble_at_client.h"
-#include "app_power_manage.h"
 
 #define LOG_TAG_CONST       AT_COM
 #define LOG_TAG             "[AT_CMD]"
@@ -53,19 +52,11 @@ static u8 pAT_buffer_static[AT_BUFFER_SIZE];   //ci data path memory
 static u8 respond_buffer_static[32];   //ci data path memory
 
 void at_send_event(u8 opcode, const u8 *packet, int size);
-/* extern void at_set_soft_poweroff(void); */
-extern void atcom_power_event_to_user(u8 event);
+extern void at_set_soft_poweroff(void);
 extern void bt_max_pwr_set(u8 pwr, u8 pg_pwr, u8 iq_pwr, u8 ble_pwr);
 
 void bredr_set_fix_pwr(u8 fix);
 void ble_set_fix_pwr(u8 fix);
-void at_set_atcom_low_power_mode(u8 enable);
-
-
-static u8 at_uart_fifo_buffer[AT_UART_FIFIO_BUFFER_SIZE];
-cbuffer_t at_to_uart_cbuf;
-
-//===========================================================
 
 static u8 event_buffer[64 + 4];
 static void at_send_event_cmd_complete(u8 opcode, u8 status, u8 *packet, u8 size)
@@ -83,6 +74,14 @@ static void at_send_event_cmd_complete(u8 opcode, u8 status, u8 *packet, u8 size
 
 static void at_send_event_update(u8 event_type, const u8 *packet, int size)
 {
+    /* switch(event_type) */
+    /* { */
+    /* case AT_EVT_BLE_DATA_RECEIVED: */
+    /* break; */
+    /* default: */
+    /* memcpy(event_buffer, packet, size); */
+    /* break; */
+    /* } */
     at_send_event(event_type, packet, size);
 }
 
@@ -284,23 +283,9 @@ static void at_com_packet_handler(const u8 *packet, int size)
 
     case AT_CMD_ENTER_SLEEP_MODE: {
         log_info("AT_CMD_ENTER_SLEEP_MODE");
-        atcom_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+        at_set_soft_poweroff();
     }
     break;
-
-    case AT_CMD_SET_LOW_POWER_MODE : {
-        status = 0;
-        log_info("AT_CMD_SET_LOW_POWER_MODE: %d", cmd->payload[0]);
-        at_send_event_cmd_complete(cmd->opcode, status, NULL, 0);
-#if (defined CONFIG_CPU_BD19)
-        extern void board_at_uart_wakeup_enalbe(u8 enalbe);
-        board_at_uart_wakeup_enalbe(cmd->payload[0]);
-        at_set_atcom_low_power_mode(cmd->payload[0]);
-#endif
-
-    }
-    break;
-
     case AT_CMD_SET_CONFIRM_GKEY:
         log_info("AT_CMD_SET_CONFIRM_GKEY");
         status = 0;
@@ -435,6 +420,7 @@ static void at_client_packet_handler(const u8 *packet, int size)
     case AT_CMD_STATUS_REQUEST: {
         log_info("AT_CMD_STATUS_REQUEST");
         status = ble_at_get_staus();
+
         at_send_event(AT_EVT_STATUS_RESPONSE, &status, 1);
     }
     break;
@@ -484,7 +470,7 @@ static void at_client_packet_handler(const u8 *packet, int size)
 
     case AT_CMD_ENTER_SLEEP_MODE: {
         log_info("AT_CMD_ENTER_SLEEP_MODE");
-        atcom_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+        at_set_soft_poweroff();
     }
     break;
 
@@ -701,26 +687,12 @@ void at_send_event(u8 opcode, const u8 *packet, int size)
     evt->opcode = opcode;
     evt->length = size;
 
-    ASSERT(AT_FORMAT_HEAD + size <= AT_BUFFER_SIZE, "AT_BUFFER, Fatal Error");
+    ASSERT(AT_FORMAT_HEAD + size <= AT_BUFFER_SIZE, "Fatal Error");
 
     if (size) {
         memcpy(evt->payload, packet, size);
     }
-
-    int packet_len = evt->length + AT_FORMAT_HEAD;
-    u16 ret = cbuf_write(&at_to_uart_cbuf, evt, packet_len);
-
-    if (ret < packet_len) {
-        log_info("bt so fast, uart lose data,%d!!", packet_len);
-        return;
-    }
-
-    struct sys_event e;
-    e.type = SYS_BT_EVENT;
-    e.arg  = (void *)SYS_BT_EVENT_FORM_AT;
-    e.u.dev.event = 0;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
+    at_uart_send_packet(evt, evt->length + AT_FORMAT_HEAD);
 }
 
 
@@ -751,8 +723,6 @@ void at_cmd_init(void)
 #if TRANS_AT_CLIENT
     at_uart_init(at_client_packet_handler);
 #endif
-
-    cbuf_init(&at_to_uart_cbuf, at_uart_fifo_buffer, AT_UART_FIFIO_BUFFER_SIZE);
 
     log_info("at com is ready");
     at_send_event(AT_EVT_SYSTEM_READY, 0, 0);

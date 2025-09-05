@@ -74,7 +74,6 @@ uint16_t
 
 
 uint16_t WS2812FX_mode_fade_each_led(void) ;
-void set_seg_forward_out(uint8_t s, uint16_t ms);
 uint16_t WS2812FX_mode_single_block_scan(void);
 uint16_t WS2812FX_mode_mutil_fade(void) ;
 uint16_t WS2812FX_mode_multi_block_scan(void);
@@ -82,28 +81,6 @@ uint16_t WS2812FX_mode_mutil_breath(void);
 uint16_t WS2812FX_mode_mutil_twihkle(void);
 uint16_t WS2812FX_mode_multi_forward_same(void);
 uint16_t WS2812FX_mode_multi_back_same(void);
-uint16_t WS2812FX_adj_rgb_sequence(void);
-uint16_t WS2812FX_mutil_c_jump(void);
-uint16_t WS2812FX_mutil_c_gradual(void);
-uint16_t breath_w(void);
-uint16_t WS2812FX_mutil_strobe(void);
-uint16_t breath_rgb(void);
-
-
-
-/***************天奕光纤满天星流星效果*****************/
-
-uint16_t WS2812FX_mode_comet_1(void);
-uint16_t WS2812FX_mode_comet_2(void);
-uint16_t WS2812FX_mode_comet_3(void);
-uint16_t meteor_effect_G(void);
-uint16_t meteor_effect_H(void);
-uint16_t WS2812FX_mode_comet_4(void);
-uint16_t WS2812FX_mode_comet_5(void);
-uint16_t WS2812FX_mode_comet_6(void);
-
-uint16_t fc_double_meteor(void);
-void close_metemor(void);
 
 
 

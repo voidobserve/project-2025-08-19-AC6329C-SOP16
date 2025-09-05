@@ -42,6 +42,8 @@
 
 #if CONFIG_APP_AT_COM && TRANS_AT_CLIENT
 
+#define SUPPORT_TEST_BOX_BLE_MASTER_TEST_EN	   1
+
 #if LE_DEBUG_PRINT_EN
 /* #define log_info            printf */
 #define log_info(x, ...)    printf("[LE_AT_CLI]" x " ", ## __VA_ARGS__)
@@ -464,8 +466,8 @@ static bool resolve_adv_report(u8 *adv_address, u8 data_length, u8 *data)
         case HCI_EIR_DATATYPE_SHORTENED_LOCAL_NAME:
             tmp32 = adv_data_pt[lenght - 1];
             adv_data_pt[lenght - 1] = 0;;
-            // log_info("remoter_name: %s\n", adv_data_pt);
-            // log_info_hexdump(adv_address, 6);
+            log_info("remoter_name: %s\n", adv_data_pt);
+            log_info_hexdump(adv_address, 6);
             adv_data_pt[lenght - 1] = tmp32;
             //-------
 #if SUPPORT_TEST_BOX_BLE_MASTER_TEST_EN
@@ -721,9 +723,9 @@ static void cbk_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
             break;
 
         case ATT_EVENT_MTU_EXCHANGE_COMPLETE:
-            mtu = att_event_mtu_exchange_complete_get_MTU(packet);
+            mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 3;
             log_info("ATT MTU = %u\n", mtu);
-            ble_op_att_set_send_mtu(mtu - 3);
+            ble_op_att_set_send_mtu(mtu);
             break;
 
         case HCI_EVENT_VENDOR_REMOTE_TEST:
@@ -974,7 +976,7 @@ void input_key_handler(u8 key_status, u8 key_number)
 
 static u8 client_idle_query(void)
 {
-    return 1;
+    return 0;
 }
 
 REGISTER_LP_TARGET(client_user_target) = {

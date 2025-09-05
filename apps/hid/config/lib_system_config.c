@@ -17,7 +17,7 @@
 
 
 ///打印是否时间打印信息
-const int config_printf_time         = 0;
+const int config_printf_time         = 1;
 
 ///异常中断，asser打印开启
 #ifdef CONFIG_RELEASE_ENABLE
@@ -47,19 +47,6 @@ const int device_bulk_read_async_enable = 0;
 //================================================//
 const int ENABLE_LUA_VIRTUAL_MACHINE = 0;
 
-//================================================//
-//        不可屏蔽中断使能配置(UNMASK_IRQ)        //
-//================================================//
-// 0:关闭IPMASK和游湖idle任务
-// 1:开启IPMASK
-// 2:开启IPMASK和优化idle任务
-const int CONFIG_CPU_UNMASK_IRQ_ENABLE = 2;
-
-//================================================//
-//0:使用timer0 delay; 1:使用mpwm3 delay,释放timer0//
-//               only supprt: bd19	              //
-//================================================//
-const int set_to_close_timer0_delay = 0;
 
 /**
  * @brief Log (Verbose/Info/Debug/Warn/Error)
@@ -70,12 +57,6 @@ const char log_tag_const_i_SYS_TMR AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
 const char log_tag_const_d_SYS_TMR AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
 const char log_tag_const_w_SYS_TMR AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(TRUE);
 const char log_tag_const_e_SYS_TMR AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(TRUE);
-
-const char log_tag_const_v_SYSCFG AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
-const char log_tag_const_i_SYSCFG AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
-const char log_tag_const_d_SYSCFG AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
-const char log_tag_const_w_SYSCFG AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(TRUE);
-const char log_tag_const_e_SYSCFG AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(TRUE);
 
 const char log_tag_const_v_JLFS AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);
 const char log_tag_const_i_JLFS AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(FALSE);

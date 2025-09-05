@@ -3,10 +3,8 @@
 #define paint_tool_h
 
 #include "led_strip_sys.h"
-#if 0
+
 /******************************************************************common******************************************************************/
-#define MAX_DUAN_OF_PAINT   20      //涂抹模式最多支持20段,根据涂鸦平台定义
-#define Disp_buf_Len        1100    //显存大小，决定了可用灯带的长度，3*350=1050，最多1050个灯珠，350组灯
 
 
 
@@ -72,7 +70,7 @@ color_t color_temp_tran_rgb(u16 b, u16 k);
 void m_hsv_to_rgb(u8 *R, u8 *G, u8 *B, int h, int s, int v);
 void hsv_to_rgb(int *g, int *r, int *b, int h, int s, int v);
 
-#endif
+
 #endif
 
 

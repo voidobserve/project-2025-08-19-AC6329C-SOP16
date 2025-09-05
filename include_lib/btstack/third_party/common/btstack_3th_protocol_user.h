@@ -35,7 +35,6 @@ typedef enum {
 enum {
     RCSP_BLE,
     RCSP_SPP,
-    RCSP_HID,
 };
 
 

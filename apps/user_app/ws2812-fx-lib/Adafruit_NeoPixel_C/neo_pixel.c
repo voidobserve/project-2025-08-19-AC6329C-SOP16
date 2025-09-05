@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "adafruit_typedef.h"
-#include "led_strip_sys.h"
-
-
 
 /* 
 Adafruit_NeoPixel库为实现WS2812类似系列的灯珠实现非常酷炫的效果提供了各种接口函数，
@@ -29,143 +26,17 @@ Adafruit_NeoPixel_updateLength()和Adafruit_NeoPixel_updateType()函数要谨慎
 这里面不包含丰富的显示效果，具体的显示效果例程还需要从example的例子中移植。
 
  */
-
-#define SYS_MAX_LED_NUMBER 300
-
 /*-------------------------------variable-------------------------------*/
 static uint16_t          numLEDs;    ///< Number of RGB LEDs in strip
 static uint16_t          numBytes;   ///< Size of 'pixels' buffer below
 //static int16_t           pin;        ///< Output pin number (-1 if not yet set)
 static uint8_t           brightness; ///< Strip brightness 0-255 (stored as +1)
-static uint8_t           pixels[SYS_MAX_LED_NUMBER];     ///< Holds LED color values (3 or 4 bytes each)   配置RAM大小
+static uint8_t           pixels[6200] __attribute__((aligned(4)));     ///< Holds LED color values (3 or 4 bytes each)
 static uint8_t           rOffset;    ///< Red index within each 3- or 4-byte pixel
 static uint8_t           gOffset;    ///< Index of green byte
 static uint8_t           bOffset;    ///< Index of blue byte
 static uint8_t           wOffset;    ///< Index of white (==rOffset if no white)
 //static uint32_t          endTime;    ///< Latch timing reference
-
-// -------------------------   应用代码 -------------------------------------
-// -------------------------   应用代码 -------------------------------------
-// -------------------------   应用代码 -------------------------------------
-static unsigned long tick_ms;
-void ws281x_init()
-{
-
-
-
-}
-
-
-volatile u8 buf[SYS_MAX_LED_NUMBER*3]__attribute((aligned(4)));   //使用中断实现效果时，必须需要全局变量SYS_MAX_LED_NUMBER*3
-
-/**
- * @brief 灯具的驱动集成，包括七彩的驱动，幻彩的驱动
- * 
- * @param pixels_pattern   颜色
- * @param pattern_size     灯具的长度    fc_effect.led_num * 3 或者 * 4
- */
-void ws281x_show(unsigned char *pixels_pattern, unsigned short pattern_size)
-{
-   
-#if(LED_STRIP_TYPE == TYPE_Fiber_optic_lights)
-
-#if LED_STRIP_RGBW
-
-// printf_buf(pixels_pattern,pattern_size);
-    fc_rgbw_driver(*pixels_pattern,    \
-                *(pixels_pattern + 1),\
-                *(pixels_pattern + 2),\
-                *(pixels_pattern + 3));
-
-
-    //该数据处理是仅有白光的流星使用
-    unsigned short i,j=0,k=0;    
-    u8 r,g,b,w;
-    for(i=0; i< pattern_size/4; i++)
-    {
-      *(buf+i) = *(pixels_pattern + 4 + i*4);  
-
-    }
-    
-    for(i=0; i< pattern_size/4; i++)
-    {
-      if(j==0){
-
-        r = *(buf+i);
-
-      }else if(j==1){
-
-        g = *(buf+i);
-       
-      }
-      else if(j==2){
-
-        b = *(buf+i);
-
-      }else if(j==3){
-
-        w = *(buf+i);
-
-      }
-
-      j++;
-
-      if(j==4){
-
-        j=0;
-
-        *(buf + rOffset + (i-3)) = r;
-        *(buf + gOffset + (i-3)) = g;
-        *(buf + bOffset + (i-3)) = b;
-        *(buf + wOffset + (i-3)) = w;
-
-      }
-    }
-    //幻彩灯驱动函数
-    extern void ledc_send_rgbbuf_isr(u8 index, u8 *rgbbuf, u32 buf_len, u16 again_cnt);
-    ledc_send_rgbbuf_isr(0, buf, pattern_size/4, 0);
-
-#else
-
-
-
-
-#endif
-
-
-#else if(LED_STRIP_TYPE == TYPE_Fiber_optic_lights)
-
-
-
-#endif 
-
-}
-
-
-
-// 周期10ms
-unsigned long HAL_GetTick(void)
-{
-  return tick_ms;
-}
-
-// 每10ms调用一次
-void run_tick_per_10ms(void)
-{
-  tick_ms+=10;
-}
-
-
-
-
-
-
-
-
-
-//=============================== 以下是库代码 尽量不要改动  =======================
-//=============================== 以下是库代码 尽量不要改动  =======================
-//=============================== 以下是库代码 尽量不要改动  =======================
 
 
 void Adafruit_NeoPixel_init(uint16_t pixel_num, neoPixelType type) {
@@ -183,6 +54,7 @@ void Adafruit_NeoPixel_init(uint16_t pixel_num, neoPixelType type) {
   numBytes = pixel_num * ((wOffset == rOffset)? 3 : 4);
   memset(pixels, 0, numBytes);
   numLEDs = pixel_num;
+
 /*   pixels = (uint8_t *)malloc(numBytes); 
   if(NULL != pixels){ //内存申请成功
     memset(pixels, 0, numBytes);
@@ -305,8 +177,8 @@ void Adafruit_NeoPixel_show(void) {
   //
   // If there is not enough memory, we will fall back to cycle counter
   // using DWT
-  uint32_t  pattern_size   = numBytes*8*sizeof(uint16_t)+2*sizeof(uint16_t);
-  uint16_t* pixels_pattern = NULL;
+// numLEDs
+// numBytes
   ws281x_show(pixels, numBytes);
 #if 0
   #if defined(ARDUINO_NRF52_ADAFRUIT) // use thread-safe malloc

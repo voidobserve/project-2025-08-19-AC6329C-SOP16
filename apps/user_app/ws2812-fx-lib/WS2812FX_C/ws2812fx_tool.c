@@ -69,7 +69,7 @@ uint16_t WS2812FX_scan(uint32_t color1, uint32_t color2, uint8_t dual) {
   }
   if(_seg_rt->counter_mode_step >= (uint16_t)(_seg_len - size)) _seg_rt->aux_param = 1;
 
-  return (_seg->speed );
+  return (_seg->speed / (_seg_len * 2));
 }
 
 
@@ -362,7 +362,7 @@ uint16_t WS2812FX_fireworks(uint32_t color) {
     }
   }
 
-  return (_seg->speed / _seg_len);
+  return (_seg->speed );
 }
 
 
@@ -370,8 +370,10 @@ uint16_t WS2812FX_fireworks(uint32_t color) {
 
 /*
  * Fire flicker function
+ 实现随机位置闪烁，星空效果
  */
 uint16_t WS2812FX_fire_flicker(int rev_intensity) {
+   WS2812FX_fade_out();
   uint8_t w = (_seg->colors[0] >> 24) & 0xFF;
   uint8_t r = (_seg->colors[0] >> 16) & 0xFF;
   uint8_t g = (_seg->colors[0] >>  8) & 0xFF;
@@ -379,14 +381,15 @@ uint16_t WS2812FX_fire_flicker(int rev_intensity) {
   uint8_t lum = max(w, max(r, max(g, b))) / rev_intensity;
 
   
-  for(uint16_t i=_seg->start; i <= _seg->stop; i++) {
+  for(uint16_t i=0; i <= 2 ; i++) 
+  {
     int flicker = WS2812FX_random8_lim(lum);
 
-    WS2812FX_setPixelColor_rgbw(i, max(r - flicker, 0), max(g - flicker, 0), max(b - flicker, 0), max(w - flicker, 0));
+    WS2812FX_setPixelColor_rgbw(WS2812FX_random16_lim(_seg_len), max(r - flicker, 0), max(g - flicker, 0), max(b - flicker, 0), max(w - flicker, 0));
   }
 
   SET_CYCLE;
-  return (_seg->speed / _seg_len);
+  return (_seg->speed );
 }
 
 /*
@@ -406,4 +409,50 @@ uint16_t WS2812FX_blink(uint32_t color1, uint32_t color2, uint8_t strobe) {
     return strobe ? 20 : (_seg->speed / 2);
   }
 }
+
+// 反向移动某一段
+// s起始地址
+// e结束地址
+// 条件：e>s
+void WS2812FX_move_reverse(u16 s, u16 e)
+{
+  u16 i;
+  if(s > e) return;
+  /* 获取原始颜色，没有进行亮度调整的颜色 */
+  uint32_t c = Adafruit_NeoPixel_getOriginPixelColor(s);
+  /* 颜色平移一个像素,把后面像素复制到前面 */
+  WS2812FX_copyPixels(s, s+1, e - s);
+
+  /* 把第一个颜色，补到最后一个位置 */
+  Adafruit_NeoPixel_setPixelColor_raw(e, c);
+}
+
+// 正向移动某一段
+// s起始地址
+// e结束地址
+// 条件：e>s
+void WS2812FX_move_forward(u16 s, u16 e)
+{
+  u16 i;
+
+  if(s > e) return;
+  uint32_t c = Adafruit_NeoPixel_getOriginPixelColor(e);
+
+  for(i=0;i<e - s;i++)
+  {
+    WS2812FX_copyPixels(e-i , e - 1-i, 1);
+  }
+
+  Adafruit_NeoPixel_setPixelColor_raw(s, c);  
+}
+
+
+
+
+
+
+
+
+
+
 

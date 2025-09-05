@@ -33,7 +33,6 @@ typedef struct _CHARGE_VAR {
 #define __this 	(&charge_var)
 static CHARGE_VAR charge_var;
 static u8 charge_flag;
-extern const int set_to_close_timer0_delay;
 
 #define BIT_LDO5V_IN		BIT(0)
 #define BIT_LDO5V_OFF		BIT(1)
@@ -60,23 +59,12 @@ void charge_check_and_set_pinr(u8 level)
 
 static void udelay(u32 usec)
 {
-    if (set_to_close_timer0_delay) {
-        JL_MCPWM->MCPWM_CON0 &= ~BIT(8 + 3);
-        JL_MCPWM->TMR3_CNT = 0;
-        JL_MCPWM->TMR3_PR = clk_get("lsb") / 1000000 * usec;
-        JL_MCPWM->TMR3_CON = BIT(10) | BIT(0);
-        JL_MCPWM->MCPWM_CON0 |= BIT(8 + 3);
-        while (!(JL_MCPWM->TMR3_CON & BIT(12)));
-        JL_MCPWM->TMR3_CON = BIT(10);
-        JL_MCPWM->MCPWM_CON0 &= ~BIT(8 + 3);
-    } else {
-        JL_TIMER0->CON = BIT(14);
-        JL_TIMER0->CNT = 0;
-        JL_TIMER0->PRD = clk_get("timer") / 1000000L  * usec; //1us
-        JL_TIMER0->CON = BIT(0) | BIT(2) | BIT(6); //sys clk
-        while ((JL_TIMER0->CON & BIT(15)) == 0);
-        JL_TIMER0->CON = BIT(14);
-    }
+    JL_TIMER0->CON = BIT(14);
+    JL_TIMER0->CNT = 0;
+    JL_TIMER0->PRD = clk_get("timer") / 1000000L  * usec; //1us
+    JL_TIMER0->CON = BIT(0) | BIT(2) | BIT(6); //sys clk
+    while ((JL_TIMER0->CON & BIT(15)) == 0);
+    JL_TIMER0->CON = BIT(14);
 }
 
 static u8 check_charge_state(void)
@@ -450,7 +438,6 @@ int charge_init(const struct dev_node *node, void *arg)
         }
     } else {
         charge_flag = BIT_LDO5V_OFF;
-        power_exit_charge_mode();
     }
 
     __this->init_ok = 1;

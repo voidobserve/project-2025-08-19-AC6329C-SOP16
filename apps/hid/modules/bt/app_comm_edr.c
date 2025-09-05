@@ -69,72 +69,10 @@ static u8 sniff_ready_status = 0; //0:sniff_ready 1:sniff_not_ready
 static int sniff_timer = 0;
 static const edr_sniff_par_t *sniff_param_info;
 static u8 edr_remote_address[6];
-static u16 negotiation_sniff_interval_offset = 0;
-extern int edr_hid_timer_handle;
 
 extern void user_spp_data_handler(u8 packet_type, u16 ch, u8 *packet, u16 size);
 static void sys_auto_sniff_controle(u8 enable, u8 *addr);
 extern void bredr_set_dut_enble(u8 en, u8 phone);
-
-#define SNIFF_SLOT_STEP 6 //slot步进数
-#define SNIFF_PARAM_COUNT 3 //参数请求组个数
-
-/* ***************************************************************************/
-/**
- * \Brief :       库调用:进入sniff成功后，协商的通信间隔值(unit:slot,625us)
- *
- * \Param :       addr---remote's addr
- * \Param :       t_sniff---通信间隔，slots
- * \Param :        negotiation
- */
-/* ***************************************************************************/
-void bt_sniff_param_hook(u8 *addr, u16 t_sniff)
-{
-    log_info("t_sniff= %d us", (u32)t_sniff * 625);
-}
-
-/* ***************************************************************************/
-/**
- * \Brief :       库调用进行sniff请求参数更新
- *
- * \Param :
- * \Param :        attemp
- * \Param :        timeout
- * \Param :        negotiation
- */
-/* ***************************************************************************/
-void __attribute__((weak)) sniff_negotiation_hook(u16 *T_sniff, u16 *attemp, u16 *timeout, u8 negotiation)
-{
-    static u8 negotiation_count;
-    if (sniff_param_info->sniff_mode == SNIFF_MODE_ANCHOR) {
-        //库提供的negotiation变量的值是 1~3~1~3 循环
-        if (negotiation == 1) {
-            //三次请求的相同sniff参数对端设备都不接受 只能进行下一组参数的请求
-            negotiation_count++;
-        }
-        if (negotiation_count > SNIFF_PARAM_COUNT) {
-            negotiation_count = 0;
-            log_error("sniff negotiation error Unable to negotiate");
-            return;
-        }
-        negotiation_sniff_interval_offset += negotiation_count * SNIFF_SLOT_STEP;
-    }
-    *T_sniff = sniff_param_info->max_interval_slots + negotiation_sniff_interval_offset;
-    *attemp = sniff_param_info->attempt_slots;
-    *timeout = sniff_param_info->timeout_slots;
-}
-
-/* ***************************************************************************/
-/**
- * \Brief :       获得sniff更新周期
- *
- * \Return :      sniff周期
- */
-/* ***************************************************************************/
-u16 get_app_sniff_interval()
-{
-    return (sniff_param_info->max_interval_slots + negotiation_sniff_interval_offset) * 5 / 8;  //ms
-}
 
 /*************************************************************************************************/
 /*!
@@ -203,15 +141,11 @@ void btstack_edr_start_before_init(const edr_init_cfg_t *cfg, int param)
 
     __set_user_ctrl_conn_num(1);
 
-#if USER_SUPPORT_PROFILE_HFP
-    __set_disable_sco_flag(1);////禁止发起esco 通话从手机出声音
-#if TCFG_SYS_LVD_EN
-//edr通过hfp显示电量
+#if (TCFG_USER_EDR_ENABLE && TCFG_SYS_LVD_EN && USER_SUPPORT_PROFILE_HFP)
+    //edr通过hfp显示电量
+    __set_disable_sco_flag(1);
     __bt_set_update_battery_time(60);
     get_battery_value_register(bt_get_battery_value);   /*电量显示获取电量的接口*/
-#else
-    __bt_set_update_battery_time(0);
-#endif
 #else
     __bt_set_update_battery_time(0);
 #endif
@@ -232,16 +166,9 @@ void btstack_edr_start_before_init(const edr_init_cfg_t *cfg, int param)
 #endif
 
     //io_capabilities ; /*0: Display only 1: Display YesNo 2: KeyboardOnly 3: NoInputNoOutput*/
-    //oob: 0:data not present 1:data from remote device present
-    //authentication_requirements:
-    //0:MITM protect not require - NO bonding
-    //1:MITM protect require - NO bonding
-    //2:MITM protect not require - dedicated bonding
-    //3:MITM protect require - dedicated bonding
-    //4:MITM protect not require - general bonding
-    //5:MITM protect require - general bonding
+    //authentication_requirements: 0:not protect  1 :protect
     __set_simple_pair_param(cfg->io_capabilities, cfg->oob_data, cfg->authentication_req);
-    __set_simple_pair_flag(!cfg->passkey_enable);
+    //__set_simple_pair_flag(!cfg->passkey_enable);
 
     log_info("---edr's address");
     printf_buf((void *)bt_get_mac_addr(), 6);
@@ -269,8 +196,7 @@ void btstack_edr_start_after_init(int param)
     /* bt_wait_phone_connect_control_ext(1, 1); */
     sys_auto_sniff_controle(1, NULL);
 #else
-    //lmp_set_sniff_disable();
-    //lmp_set_sniff_establish_by_remote(1);
+    /* lmp_set_sniff_disable();[>set disable<] */
 #endif
 }
 
@@ -346,7 +272,6 @@ static int bt_comm_edr_status_event_handler(struct bt_event *bt)
     case BT_STATUS_FIRST_DISCONNECT:
     case BT_STATUS_SECOND_DISCONNECT:
         log_info("BT_STATUS_DISCONNECT\n");
-        negotiation_sniff_interval_offset = 0;  //重置sinff偏移量
         break;
 
     case BT_STATUS_PHONE_INCOME:
@@ -387,9 +312,6 @@ static int bt_comm_edr_status_event_handler(struct bt_event *bt)
             sys_auto_sniff_controle(1, bt->args);
         } else {
             sys_auto_sniff_controle(0, bt->args);
-            if (edr_hid_timer_handle) {
-                sys_s_hi_timer_modify(edr_hid_timer_handle, (u32)(get_app_sniff_interval()));
-            }
         }
         break;
 
@@ -397,14 +319,8 @@ static int bt_comm_edr_status_event_handler(struct bt_event *bt)
         log_info("BT STATUS TRIM OVER\n");
         break;
 
-    case BT_STATUS_RECONN_OR_CONN:
-        log_info("BT_STATUS_RECONN_OR_CONN \n");
-#if USER_SUPPORT_PROFILE_MAP
-        log_info("USER_CTRL_MAP_READ_TIME");
-        user_send_cmd_prepare(USER_CTRL_MAP_READ_TIME, 0, NULL);
-#endif
     default:
-        log_info("BT STATUS DEFAULT\n");
+        log_info(" BT STATUS DEFAULT\n");
         break;
     }
     return 0;
@@ -845,31 +761,6 @@ void bt_comm_edr_mode_enable(u8 enable)
     log_info("%s end", __FUNCTION__);
 }
 
-#if USER_SUPPORT_PROFILE_MAP
-#define PROFILE_CMD_TRY_AGAIN_LATER 	    -1004
-void bt_get_time_date()
-{
-    log_info("hfp_get_time_date");
-    int error = user_send_cmd_prepare(USER_CTRL_HFP_GET_PHONE_DATE_TIME, 0, NULL);
-    log_info(">>>>>error = %d\n", error);
-    if (error == PROFILE_CMD_TRY_AGAIN_LATER) {
-        sys_timeout_add(NULL, bt_get_time_date, 100);
-    }
-}
-void phone_date_and_time_feedback(u8 *data,  u16 len)
-{
-    log_info("hfp_get_time: %s", data);
-}  
-void map_get_time_data(char *time, int status)
-{
-    if (status  ==  0) {
-        log_info("map_get_time: %s", time);
-    } else  {
-            log_info(">>>map get fail\n");
-            sys_timeout_add(NULL, bt_get_time_date, 100);
-        }  
-    }
-#endif
 
 #endif
 

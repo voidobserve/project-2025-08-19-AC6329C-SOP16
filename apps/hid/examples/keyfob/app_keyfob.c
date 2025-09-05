@@ -108,7 +108,7 @@ static const u8 keyfob_report_map[] = {
 #define SNIFF_MIN_INTERVALSLOT        16
 #define SNIFF_ATTEMPT_SLOT            2
 #define SNIFF_TIMEOUT_SLOT            1
-#define SNIFF_CHECK_TIMER_PERIOD      200
+#define SNIFF_CHECK_TIMER_PERIOD      100
 #else
 
 #define SNIFF_MODE_TYPE               SNIFF_MODE_DEF
@@ -138,7 +138,6 @@ static const edr_init_cfg_t keyfob_edr_config = {
     .page_timeout = 8000,
     .super_timeout = 8000,
     .io_capabilities = 3,
-    .passkey_enable = 0,
     .authentication_req = 2,
     .oob_data = 0,
     .sniff_param = &keyfob_sniff_param,
@@ -167,8 +166,7 @@ static void keyfob_auto_shutdown_disable(void)
 
 extern void ble_module_enable(u8 en);
 extern void p33_soft_reset(void);
-static void keyfob_set_soft_poweroff(void);
-void keyfob_power_event_to_user(u8 event);
+void keyfob_set_soft_poweroff(void);
 
 enum {
     LED_NULL = 0,
@@ -332,13 +330,7 @@ static void led_on_off(u8 state, u8 res)
             led_timeout_count = 1;//
             led_timer_start(300);
 #if TCFG_USER_EDR_ENABLE
-            if (edr_hid_is_connected()) {
-                led_next_state = LED_CLOSE;
-            } else {
-                led_next_state = LED_WAIT_CONNECT;
-            }
-#else
-            if ((ble_connect != 0)) {
+            if (edr_hid_is_connected() || (ble_connect != 0)) {
                 led_next_state = LED_CLOSE;
             } else {
                 led_next_state = LED_WAIT_CONNECT;
@@ -384,7 +376,7 @@ static void led_on_off(u8 state, u8 res)
             KEYF_LED_OFF();
             led_timeout_count = 0;
             led_timer_stop();
-            keyfob_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            keyfob_set_soft_poweroff();
             if (io_check_timer) {
                 sys_s_hi_timer_del(io_check_timer);
                 io_check_timer = 0;
@@ -624,17 +616,7 @@ static void keyfob_vm_deal(u8 rw_flag)
     }
 }
 
-void keyfob_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void keyfob_set_soft_poweroff(void)
+void keyfob_set_soft_poweroff(void)
 {
     log_info("keyfob_set_soft_poweroff\n");
     is_hid_active = 1;
@@ -696,7 +678,7 @@ static void keyfob_app_start()
 
 #if (TCFG_HID_AUTO_SHUTDOWN_TIME)
     //无操作定时软关机
-    g_auto_shutdown_timer = sys_timeout_add((void *)POWER_EVENT_POWER_SOFTOFF, keyfob_power_event_to_user, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
+    g_auto_shutdown_timer = sys_timeout_add(NULL, keyfob_set_soft_poweroff, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
 #endif
     bredr_set_fix_pwr(7);
 }
@@ -816,11 +798,6 @@ static int keyfob_bt_connction_status_event_handler(struct bt_event *bt)
 
     default:
 #if TCFG_USER_EDR_ENABLE
-        if (bt->event == BT_STATUS_FIRST_CONNECTED) {
-            led_on_off(LED_CLOSE, 0);
-        } else if (bt->event == BT_STATUS_FIRST_DISCONNECT) {
-            led_on_off(LED_WAIT_CONNECT, 0);
-        }
         bt_comm_edr_status_event_handler(bt);
 #endif
 

@@ -55,8 +55,9 @@ int app_power_event_handler(struct device_event *dev, void (*set_soft_poweroff_c
 {
     int ret = false;
 
-    switch (dev->event) {
 #if(TCFG_SYS_LVD_EN == 1)
+
+    switch (dev->event) {
     case POWER_EVENT_POWER_NORMAL:
         break;
     case POWER_EVENT_POWER_WARNING:
@@ -88,12 +89,11 @@ int app_power_event_handler(struct device_event *dev, void (*set_soft_poweroff_c
             lowpower_timer = 0 ;
         }
         break;
-#endif
-    case POWER_EVENT_POWER_SOFTOFF:
-        set_soft_poweroff_call();
     default:
         break;
     }
+#endif
+
     return ret;
 }
 
@@ -231,7 +231,7 @@ void vbat_check(void *priv)
 
     cur_battery_level = battery_value_to_phone_level(bat_val);
 
-    // printf("bv:%d, bl:%d , check_vbat:%d\n", bat_val, cur_battery_level, adc_check_vbat_lowpower());
+    printf("bv:%d, bl:%d , check_vbat:%d\n", bat_val, cur_battery_level, adc_check_vbat_lowpower());
 
     unit_cnt++;
 

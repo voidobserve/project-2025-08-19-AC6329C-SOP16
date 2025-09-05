@@ -16,6 +16,7 @@
 #include "app_chargestore.h"
 #include "app_power_manage.h"
 #include "le_client_demo.h"
+#include "multi_demo/le_multi_common.h"
 #include "app_comm_bt.h"
 
 #define LOG_TAG_CONST       MULTI_CONN
@@ -34,21 +35,11 @@ static u8 is_app_multi_active = 0;
 //---------------------------------------------------------------------
 
 //----------------------------------------------------------------------------
-void multi_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void multi_set_soft_poweroff(void)
+void multi_set_soft_poweroff(void)
 {
     log_info("set_soft_poweroff\n");
     is_app_multi_active = 1;
-    //必须先主动断开蓝牙链路,否则要等链路超时�?开
+    //必须先主动断开蓝牙链路,否则要等链路超时断开
 
 #if TCFG_USER_BLE_ENABLE
     btstack_ble_exit(0);
@@ -59,7 +50,7 @@ static void multi_set_soft_poweroff(void)
 #endif
 
 #if (TCFG_USER_EDR_ENABLE || TCFG_USER_BLE_ENABLE)
-    //延时300ms，确保BT退出链�?�?开
+    //延时300ms，确保BT退出链路断开
     sys_timeout_add(NULL, power_set_soft_poweroff, WAIT_DISCONN_TIME_MS);
 #else
     power_set_soft_poweroff();
@@ -90,12 +81,6 @@ static void multi_app_start()
     btstack_init();
 
 #endif
-
-
-    extern void my_main(void);
-
-    my_main();
-
     /* 按键消息使能 */
     sys_key_event_enable();
 }
@@ -112,6 +97,8 @@ static int multi_state_machine(struct application *app, enum app_state state, st
         switch (it->action) {
         case ACTION_MULTI_MAIN:
             multi_app_start();
+            extern void my_main(void);
+            my_main();
             break;
         }
         break;
@@ -131,7 +118,7 @@ static int multi_state_machine(struct application *app, enum app_state state, st
 
 static int multi_bt_hci_event_handler(struct bt_event *bt)
 {
-    //对应原来的蓝牙连接上�?开处理函数  ,bt->value=reason
+    //对应原来的蓝牙连接上断开处理函数  ,bt->value=reason
     log_info("----%s reason %x %x", __FUNCTION__, bt->event, bt->value);
 
 #if TCFG_USER_EDR_ENABLE
@@ -158,14 +145,6 @@ static int multi_bt_connction_status_event_handler(struct bt_event *bt)
     return 0;
 }
 
-
-#include "rf24g_app.h"
-
-/**
- * @brief 多主机的按键事件
- * 
- * @param event 
- */
 static void multi_key_event_handler(struct sys_event *event)
 {
     /* u16 cpi = 0; */
@@ -175,14 +154,13 @@ static void multi_key_event_handler(struct sys_event *event)
     if (event->arg == (void *)DEVICE_EVENT_FROM_KEY) {
         event_type = event->u.key.event;
         key_value = event->u.key.value;
-        // log_info("multi_app_key_evnet: %d,%d\n", event_type, key_value);
+        // log_info("app_key_evnet: %d,%d\n", event_type, key_value);
 
-  
 
         if (event_type == KEY_EVENT_TRIPLE_CLICK
             && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
             //for test
-            multi_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            multi_set_soft_poweroff();
             return;
         }
 

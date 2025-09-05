@@ -14,11 +14,13 @@
 #include "app_charge.h"
 #include "app_power_manage.h"
 #include "asm/charge.h"
-
-
+#include "rf433.h"
+#include "led_strip_sys.h"
+#include "led_strand_effect.h"
 #if TCFG_KWS_VOICE_RECOGNITION_ENABLE
 #include "jl_kws/jl_kws_api.h"
 #endif /* #if TCFG_KWS_VOICE_RECOGNITION_ENABLE */
+#include "one_wire.h"
 
 #define LOG_TAG_CONST       APP
 #define LOG_TAG             "[APP]"
@@ -28,19 +30,10 @@
 /* #define LOG_DUMP_ENABLE */
 #define LOG_CLI_ENABLE
 #include "debug.h"
-#include "rf433_app.h"
 
-OS_SEM LED_TASK_SEM;
-
-
-/*任务列表   */
+/*任务列表 */
 const struct task_info task_info_table[] = {
-#if CONFIG_APP_FINDMY
-    {"app_core",            1,     0,   640 * 2,   128  },
-#else
     {"app_core",            1,     0,   640,   128  },
-#endif
-
     {"sys_event",           7,     0,   256,   0    },
     {"btctrler",            4,     0,   512,   256  },
     {"btencry",             1,     0,   512,   128  },
@@ -66,13 +59,9 @@ const struct task_info task_info_table[] = {
     {"kws",                 2,     0,   256,   64   },
 #endif /* #if TCFG_KWS_VOICE_RECOGNITION_ENABLE */
 #if (TUYA_DEMO_EN)
-    {"user_deal",           2,     0,   512,   512  },//定义线程 tuya任务调度
+    {"user_deal",           7,     0,   512,   512  },//定义线程 tuya任务调度
 #endif
-#if (CONFIG_APP_HILINK)
-    {"hilink_task",         2,     0,   1024,   0},//定义线程 hilink任务调度
-#endif
-
-    {"led_task",            2,      0,  512,    512},//灯光
+    {"led_task",            2,      0,  512,    512},
     {0, 0},
 };
 
@@ -133,7 +122,6 @@ void app_main()
     }
 
     printf(">>>>>>>>>>>>>>>>>app_main...\n");
-    printf(">>> v220,2022-11-23 >>>\n");
 
     if (get_charge_online_flag()) {
 #if(TCFG_SYS_LVD_EN == 1)
@@ -180,10 +168,6 @@ void app_main()
     it.name = "nonconn_24g";
     it.action = ACTION_NOCONN_24G_MAIN;
 
-#elif CONFIG_APP_HILINK
-    it.name = "hilink";
-    it.action = ACTION_HILINK_MAIN;
-
 #elif CONFIG_APP_LL_SYNC
     it.name = "ll_sync";
     it.action = ACTION_LL_SYNC;
@@ -211,10 +195,6 @@ void app_main()
 #elif CONFIG_APP_CONN_24G
     it.name = "conn_24g";
     it.action = ACTION_CONN_24G_MAIN;
-
-#elif CONFIG_APP_FINDMY
-    it.name = "findmy";
-    it.action = ACTION_FINDMY;
 
 #else
     while (1) {
@@ -277,10 +257,13 @@ __attribute__((used)) int *__errno()
     return &err;
 }
 
-
-#if 1
-
-// --------------------------------------------------------------------------定时器
+/****************************************************************************************
+**名称:定时器设置，定时50us中断
+**功能:
+**说明:
+**备注:
+**日期:
+*****************************************************************************************/
 static const u16 timer_div[] = {
     /*0000*/    1,
     /*0001*/    4,
@@ -299,6 +282,7 @@ static const u16 timer_div[] = {
     /*1110*/    32 * 256,
     /*1111*/    128 * 256,
 };
+
 #define APP_TIMER_CLK           (CONFIG_BT_NORMAL_HZ/2) //clk_get("timer")
 #define MAX_TIME_CNT            0x7fff
 #define MIN_TIME_CNT            0x100
@@ -309,25 +293,33 @@ static const u16 timer_div[] = {
 #define TIMER_PRD               JL_TIMER2->PRD
 #define TIMER_VETOR             IRQ_TIME2_IDX
 
-
+/****************************************************************************************
+**名称:定时中断服务函数
+**功能:
+**说明:
+**备注:
+**日期:
+*****************************************************************************************/
+#define USER_IR_ENABLE 0
 ___interrupt
 AT_VOLATILE_RAM_CODE
-void user_timer_isr(void)//125us
+void user_timer_isr(void)//50us
 {
-	
+	static u8 timer_cnt;
 	TIMER_CON |= BIT(14);
 
-    extern void one_wire_send(void);
-    one_wire_send();  //steomotor
 
-    // #if TCFG_RF433GKEY_ENABLE
-        extern void timer125us_hook(void);
-        timer125us_hook();
-    // #endif
+#if TCFG_RF433_ENABLE
+    extern void timer125us_hook(void);
+    timer125us_hook();
+#endif
+
+
+    void one_wire_send(void);
+    one_wire_send();  //steomotor
 
 
 }
-
 
 void user_timer_init(void)
 {
@@ -337,8 +329,8 @@ void user_timer_init(void)
 //	printf("********* user_timer_init **********\n");
 	for (index = 0; index < (sizeof(timer_div) / sizeof(timer_div[0])); index++)
 	{
-        prd_cnt = TIMER_UNIT * (APP_TIMER_CLK / 8000) / timer_div[index];  //8000==125us
-        if (prd_cnt > MIN_TIME_CNT && prd_cnt < MAX_TIME_CNT) { 
+        prd_cnt = TIMER_UNIT * (APP_TIMER_CLK / 8000) / timer_div[index];
+        if (prd_cnt > MIN_TIME_CNT && prd_cnt < MAX_TIME_CNT) {
             break;
         }
     }
@@ -351,66 +343,188 @@ void user_timer_init(void)
 __initcall(user_timer_init);
 
 
-#endif
+extern u16 check_mic_adc(void);
+u8 music_trigger = 0;
+// u32 adc,adc_av;
+#define SAMPLE_N 20
+u8 adc_v_n, adc_avrg_n, adc_total_n;
+u32 adc_sum = 0, adc_sum_n = 0;
+extern uint8_t met_trg;
+extern uint8_t trg_en;
+extern void set_music_oc_trg(u8 p);
+u8 i,j;
+u32 adc,adc_av,adc_all;
+u16 adc_v[SAMPLE_N];    //记录20个ADC值
+u32 adc_avrg[10];        //记录5个平均值
+u32 adc_total[15];// __attribute__((aligned(4)));
 
-
-#include "led_strip_drive.h"
-#include "hardware.h"
-
-
-void main_while(void)
+//声控
+void sound_handle(void)
 {
+    extern u32 adc_get_value(u32 ch);
+    extern void WS2812FX_trigger();
+    u16 adc;
+    u8 i,trg,trg_v;
+    u32 adc_all, adc_ttl;
 
+    extern u32 adc_sample(u32 ch);
+    // 记录adc值
+    adc = adc_get_value(AD_CH_PA8);
 
-    while(1)
+    // adc = adc_sample(AD_CH_PA8);
+    // printf("adc = %d", adc);
+    if(adc < 1000)   //当ADC值大于1000，说明硬件电路有问题
     {
- 
- 
 
-       power_motor_Init(); //用做电机的上电时，多次发送
+        if(adc_sum_n < 2000)
+        {
+            adc_sum_n++;
+        }
+        if(adc_sum_n == 2000)
+        {
+            if(adc / (adc_sum/adc_sum_n) > 3) return ; //adc突变，大于平均值的3倍，丢弃改值
+            adc_sum = adc_sum - adc_sum/adc_sum_n;
+        }
+        adc_sum+=adc;
 
+        adc_v_n %= SAMPLE_N;
+        adc_v[adc_v_n] = adc;
+        adc_v_n++;
+        adc_all = 0;
+        for(i=0; i<SAMPLE_N; i++)
+        {
+            adc_all += adc_v[i];
+        }
 
-// =================================
-//           默认内容，不用修改
-// =================================
-        sound_handle();
-        run_tick_per_10ms();
-        WS2812FX_service();
-        os_time_dly(1);
+        adc_avrg_n %= 10;
+        adc_avrg[adc_avrg_n] = adc_all / SAMPLE_N;
+        adc_avrg_n++;
+        // printf("%d,",adc_all / SAMPLE_N);
+        adc_ttl = 0;
+        for(i=0; i<10; i++)
+        {
+            adc_ttl += adc_avrg[i];
+        }
+        memmove((u8*)adc_total, (u8*)adc_total+4, 14*4);
+        adc_total[14] = adc_ttl/10; //总数平均值
+
+        // 查找峰值
+        trg = 0;
+        // if( adc_total[7] >= adc_total[6] &&
+        //     adc_total[7] >= adc_total[5] &&
+        //     adc_total[7] > adc_total[4] &&
+        //     adc_total[7] > adc_total[3] &&
+        //     adc_total[7] > adc_total[2] &&
+        //     adc_total[7] > adc_total[1] &&
+        //     adc_total[7] > adc_total[0] &&
+        //     adc_total[7] >= adc_total[8] &&
+        //     adc_total[7] >= adc_total[9] &&
+        //     adc_total[7] > adc_total[10] &&
+        //     adc_total[7] > adc_total[11] &&
+        //     adc_total[7] > adc_total[12] &&
+        //     adc_total[7] > adc_total[13] &&
+        //     adc_total[7] > adc_total[14]
+
+        //     )
+        {
+            if(adc_sum_n!=0)
+            {
+                extern void set_mss(uint16_t s);
+                set_mss(adc + (adc) * fc_effect.music.s / 100  );
+                if(adc * fc_effect.music.s / 100 > adc_sum/adc_sum_n)
+                {
+                    // printf("\n adc=%d",adc);
+                    // printf("\n adc_sum/adc_sum_n=%d",adc_sum/adc_sum_n);
+
+                    // set_music_oc_trg((adc - adc_sum/adc_sum_n)*100 * fc_effect.music.s / 100/(adc_sum/adc_sum_n));
+
+                    extern void WS2812FX_trg(void);
+                    if(fc_effect.led_num < 90) //太多点数处理不过来
+                        // WS2812FX_trg();
+                    extern void set_music_fs_trg(u8 p);
+                    // set_music_fs_trg((adc - adc_sum/adc_sum_n)*100 * fc_effect.music.s / 100/(adc_sum/adc_sum_n));
+
+                    trg = 200;
+                    met_trg = 1;
+                    trg_en = 1;
+                    music_trigger = 1;
+                    if(fc_effect.on_off_flag == DEVICE_ON && fc_effect.Now_state == IS_light_music)
+                    WS2812FX_trigger();
+                }
+
+                if(adc > adc_sum/adc_sum_n)
+                {
+                    set_music_oc_trg((adc - adc_sum/adc_sum_n)*100 * fc_effect.music.s / 100/(adc_sum/adc_sum_n));
+                    extern void set_music_fs_trg(u8 p);
+                    set_music_fs_trg((adc - adc_sum/adc_sum_n)*100 * fc_effect.music.s / 100/(adc_sum/adc_sum_n));
+
+                }
+            }
+        }
     }
+}
+
+
+
+// 10ms调用一次
+void main_while(viod)
+{
+    u8 i;
+    extern void run_tick_per_10ms(void);
+    extern void WS2812FX_service() ;
+    void clr_wdt(void);
+    void check_mic_sound(void);
+    extern void WS2812FX_trigger();
+    extern void bw_breath_effect(void);
+    extern void bw_effect3(void);
+    extern void bw_gradual_effect(void);
+    extern void rf24_key_handle(void);
+    rf433_handle(&i);
+    rf24_key_handle();
+
+//森木的特殊效果，白色的是纯白效果
+    // bw_breath_effect();
+    // bw_gradual_effect();
+    // bw_effect3();
+
+ 
+    rf24g_long_timer();
+
+    sound_handle();
+    run_tick_per_10ms();
+    WS2812FX_service();
+  
 
 }
 
-extern void count_down_run(void);
-extern void time_clock_handler(void);
-extern void rf433_handle(void);
+OS_SEM LED_TASK_SEM;
+
 void my_main(void)
 {
+    printf("\n my_main");
+    extern void fc_data_init(void);
+    extern void full_color_init(void);
 
-   
-    led_gpio_init();
-    led_pwm_init();
-    mic_gpio_init();       
+    extern void read_flash_device_status_init(void);
+    extern int mic_adc_init(void);
+    led_gpio_init();        //RGB控制脚初始化
     fan_gpio_init();
-    mcu_com_init();  //电机一线通信
-
-// #if TCFG_RF433GKEY_ENABLE
+    led_pwm_init();
+    #if TCFG_RF433_ENABLE
+    extern void rf433_gpio_init(void);
     rf433_gpio_init();
-// #endif
+    #endif
+    user_timer_init();      //定时器2设置
+    mic_adc_init();
+    mcu_com_init(); //电机GPIO初始化
+    //  os_sem_create(&LED_TASK_SEM,0); 
+    //  task_create(main_while, NULL, "led_task");  
+    // fc_data_init();      //第一次上电初始化，放读flash
+    read_flash_device_status_init();
 
-    read_flash_device_status_init(); 
     full_color_init();
-
-
-    // sys_s_hi_timer_add(NULL, count_down_run, 10); //注册定时关机定时器
-    // sys_s_hi_timer_add(NULL, time_clock_handler, 10); //注册定时做的时间计时定时器
-    // sys_s_hi_timer_add(NULL, ir_timer_handler, 10); //注册红外定时器
-    // sys_s_hi_timer_add(NULL, meteor_period_sub, 10); //注册流星周期定时器
-    sys_s_hi_timer_add(NULL, rf433_handle, 10); //注册定时关机定时器
-    os_sem_create(&LED_TASK_SEM,0);
-    task_create(main_while, NULL, "led_task");
+    // sys_timeout_add
+    // 1ms调用
+    sys_s_hi_timer_add(NULL,main_while,10); 
 
 }
-
-
-

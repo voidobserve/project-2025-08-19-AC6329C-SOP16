@@ -36,6 +36,7 @@
 #include "app_comm_bt.h"
 
 #if(CONFIG_APP_KEYBOARD)
+
 #define LOG_TAG_CONST       HID_KEY
 #define LOG_TAG             "[HID_KEY]"
 #define LOG_ERROR_ENABLE
@@ -66,7 +67,7 @@ extern void midi_paly_test(u32 key);
 #define SNIFF_MIN_INTERVALSLOT        16
 #define SNIFF_ATTEMPT_SLOT            2
 #define SNIFF_TIMEOUT_SLOT            1
-#define SNIFF_CHECK_TIMER_PERIOD      200
+#define SNIFF_CHECK_TIMER_PERIOD      100
 #else
 
 #define SNIFF_MODE_TYPE               SNIFF_MODE_DEF
@@ -102,7 +103,7 @@ static bt_mode_e bt_hid_mode;
 static volatile u8 is_hidkey_active = 0;//1-临界点,系统不允许进入低功耗，0-系统可以进入低功耗
 static u16 g_auto_shutdown_timer = 0;
 static void hidkey_app_select_btmode(u8 mode);
-void hidkey_power_event_to_user(u8 event);
+
 //----------------------------------
 static const u8 hidkey_report_map[] = {
     0x05, 0x0C,        // Usage Page (Consumer)
@@ -139,20 +140,20 @@ static const u8 hidkey_report_map[] = {
 //----------------------------------
 static const u16 hid_key_click_table[8] = {
     CONSUMER_PLAY_PAUSE,
+    0,
     CONSUMER_SCAN_PREV_TRACK,
-    CONSUMER_VOLUME_DEC,
+    0,
     CONSUMER_SCAN_NEXT_TRACK,
-    CONSUMER_VOLUME_INC,
-    CONSUMER_MUTE,
+    0,
     0,
     0,
 };
 
 static const u16 hid_key_hold_table[8] = {
     0,
-    CONSUMER_SCAN_FRAME_BACK,
+    0,
     CONSUMER_VOLUME_DEC,
-    CONSUMER_SCAN_FRAME_FORWARD,
+    0,
     CONSUMER_VOLUME_INC,
     0,
     0,
@@ -164,7 +165,6 @@ static const edr_init_cfg_t hidkey_edr_config = {
     .page_timeout = 8000,
     .super_timeout = 8000,
     .io_capabilities = 3,
-    .passkey_enable = 0,
     .authentication_req = 2,
     .oob_data = 0,
     .sniff_param = &hidkey_sniff_param,
@@ -285,16 +285,15 @@ void hidkey_test_keep_send_init(void)
 static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
 {
     u16 key_msg = 0;
-    u16 key_msg_up = 0;
 
     /*Audio Test Demo*/
 #if TCFG_AUDIO_ENABLE
     if (key_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE0) {
-        printf(">>>key0:mic/encode test\n");
-        //AC695N/AC696N mic test
+        printf(">>>key0:open mic\n");
+        //br23/25 mic test
         /* extern int audio_adc_open_demo(void); */
         /* audio_adc_open_demo(); */
-        //AD697N/AC897N/AC698N mic test
+        //br30 mic test
         /* extern void audio_adc_mic_demo(u8 mic_idx, u8 gain, u8 mic_2_dac); */
         /* audio_adc_mic_demo(1, 1, 1); */
 
@@ -302,17 +301,6 @@ static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
         /* extern int audio_mic_enc_open(int (*mic_output)(void *priv, void *buf, int len), u32 code_type); */
         /* audio_mic_enc_open(NULL, AUDIO_CODING_OPUS);//opus encode test */
         /* audio_mic_enc_open(NULL, AUDIO_CODING_SPEEX);//speex encode test  */
-
-
-        /*
-        //AC632N
-        编码测试类型：
-        AUDIO_CODING_LC3
-        AUDIO_CODING_USBC
-        */
-
-        extern int audio_demo_enc_open(int (*demo_output)(void *priv, void *buf, int len), u32 code_type, u8 ai_type);
-        /* audio_demo_enc_open(NULL, AUDIO_CODING_USBC, 0); */
 
 
 
@@ -323,27 +311,17 @@ static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
 
     }
     if (key_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE1) {
-        printf(">>>key1:tone/decode test\n");
-        //AC695N/AC696N tone play test
+        printf(">>>key1:tone_play_test\n");
+        //br23/25 tone play test
         /* tone_play_by_path(TONE_NORMAL, 1); */
         /* tone_play_by_path(TONE_BT_CONN, 1); */
-        //AD697N/AC897N/AC698N tone play test
+        //br30 tone play test
         /* tone_play(TONE_NUM_8, 1); */
         /* tone_play(TONE_SIN_NORMAL, 1); */
 
         //	printf(">>>key0:set  midi\n");
         //	midi_paly_test(KEY_IR_NUM_1);
 
-
-        /*
-        //AC632N
-        解码测试类型：(需要在audio_decode.c中配置)
-        AUDIO_CODING_LC3
-        AUDIO_CODING_USBC
-        */
-
-        extern void demo_frame_test(void);
-        /* demo_frame_test(); */
     }
 
     if (key_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE2) {
@@ -365,19 +343,6 @@ static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
         key_msg = hid_key_click_table[key_value];
     } else if (key_type == KEY_EVENT_HOLD) {
         key_msg = hid_key_hold_table[key_value];
-    } else if (key_type == KEY_EVENT_UP) {
-        log_info("key_up_val = %02x\n", key_value);
-        if (bt_hid_mode == HID_MODE_EDR) {
-#if TCFG_USER_EDR_ENABLE
-            bt_comm_edr_sniff_clean();
-            edr_hid_data_send(1, (u8 *)&key_msg_up, 2);
-#endif
-        } else {
-#if TCFG_USER_BLE_ENABLE
-            ble_hid_data_send(1, &key_msg_up, 2);
-#endif
-        }
-        return;
     }
 
     if (key_msg) {
@@ -385,17 +350,11 @@ static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
         if (bt_hid_mode == HID_MODE_EDR) {
 #if TCFG_USER_EDR_ENABLE
             bt_comm_edr_sniff_clean();
-            edr_hid_data_send(1, (u8 *)&key_msg, 2);
-            if (KEY_EVENT_HOLD != key_type) {
-                edr_hid_data_send(1, (u8 *)&key_msg_up, 2);
-            }
+            edr_hid_key_deal_test(key_msg);
 #endif
         } else {
 #if TCFG_USER_BLE_ENABLE
-            ble_hid_data_send(1, &key_msg, 2);
-            if (KEY_EVENT_HOLD != key_type) {
-                ble_hid_data_send(1, &key_msg_up, 2);
-            }
+            ble_hid_key_deal_test(key_msg);
 #endif
         }
         return;
@@ -403,7 +362,7 @@ static void hidkey_app_key_deal_test(u8 key_type, u8 key_value)
 
     if (key_type == KEY_EVENT_TRIPLE_CLICK
         && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
-        hidkey_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+        hidkey_set_soft_poweroff();
         return;
     }
 
@@ -493,27 +452,6 @@ static void hidkey_vm_deal(u8 rw_flag)
 
 /*************************************************************************************************/
 /*!
- *  \brief      软关机消息处理
- *
- *  \param      [in]
- *
- *  \return
- *
- *  \note
- */
-/*************************************************************************************************/
-void hidkey_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-/*************************************************************************************************/
-/*!
  *  \brief      进入软关机
  *
  *  \param      [in]
@@ -547,7 +485,6 @@ static void hidkey_set_soft_poweroff(void)
 static void hidkey_timer_handle_test(void)
 {
     log_info("not_bt");
-    //mem_stats();//see memory
 }
 
 /*************************************************************************************************/
@@ -595,13 +532,10 @@ static void hidkey_app_start()
 
     /* 按键消息使能 */
     sys_key_event_enable();
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-    set_key_wakeup_send_flag(1);
-#endif
 
 #if (TCFG_HID_AUTO_SHUTDOWN_TIME)
     //无操作定时软关机
-    g_auto_shutdown_timer = sys_timeout_add((void *)POWER_EVENT_POWER_SOFTOFF, hidkey_power_event_to_user, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
+    g_auto_shutdown_timer = sys_timeout_add(NULL, hidkey_set_soft_poweroff, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
 #endif
 }
 
@@ -695,17 +629,6 @@ static int hidkey_bt_connction_status_event_handler(struct bt_event *bt)
          * 蓝牙初始化完成
          */
         log_info("BT_STATUS_INIT_OK\n");
-
-#if TCFG_NORMAL_SET_DUT_MODE
-#if TCFG_USER_EDR_ENABLE
-        log_info("set edr dut mode\n");
-        bredr_set_dut_enble(1, 1);
-#else
-        log_info("set ble dut mode\n");
-        ble_standard_dut_test_init();
-#endif
-        break;
-#endif
 
         hidkey_vm_deal(0);//bt_hid_mode read for VM
 

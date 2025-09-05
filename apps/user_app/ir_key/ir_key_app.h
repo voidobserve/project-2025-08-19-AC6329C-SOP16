@@ -3,7 +3,7 @@
 
 #include "board_ac632n_demo_cfg.h"
 // @ key_app.h
-#if 1
+#if TCFG_IRKEY_ENABLE
 #include "led_strip_sys.h"
 
 // ----------------------------------------------硬件配置，根据PCB实际修改
@@ -55,30 +55,31 @@
 //#define IRKEY_2H        0x0b
 //#define IRKEY_1H        0x09
 // ---------------------------------------------定义响益IR_KEY键值
-#define IRKEY_AUTO 0x2d
-#define IRKEY_ON 0x26
-#define IRKEY_OFF 0x25
-#define IRKEY_LIGHT_PLUS 0xF
-#define IRKEY_LIGHT_SUB 0x6E
-#define IRKEY_SPEED_PLUS 0x5B
-#define IRKEY_SPEED_SUB 0x5C
-#define IRKEY_R 0x6
-#define IRKEY_G 0x8
-#define IRKEY_B 0x5A
-#define IRKEY_YELLOW 0x9
-#define IRKEY_CYAN 0x10
-#define IRKEY_PURPLE 0x1C
-#define IRKEY_ORANGE 0xC
-#define IRKEY_B1 0x8A //浅蓝色30,130,255,
-#define IRKEY_B2 0x52 //深蓝色72,61,139
-#define IRKEY_G1 0x53 //浅绿色50,205,50
-#define IRKEY_W 0x1A
-#define IRKEY_MODE_ADD 0xB
-#define IRKEY_MODE_DEC 0xA
-#define IRKEY_MUSIC1 0x1
-#define IRKEY_MUSIC2 0x2
-#define IRKEY_COLOR 0x1f
-#define IRKEY_LOCK 0x0
+#define  IRKEY_ON       	  0x45     //开机
+#define  IRKEY_AUTO     	  0x46     //自动
+#define  IRKEY_OFF            0x47     //关机
+#define  IRKEY_SPEED_ADD      0x44     //速度+
+#define  IRKEY_MODE_ADD       0x40     //模式+
+#define  IRKEY_LIGHT_ADD	  0x43     //亮度+
+#define  IRKEY_SPEED_DEC      0x07     //速度-
+#define  IRKEY_MODE_DEC       0x15     //模式-
+#define  IRKEY_LIGHT_DEC	  0x09     //亮度-
+#define  IRKEY_RED	          0x16     //红色
+#define  IRKEY_GREEN1	      0x19     //深绿色
+#define  IRKEY_BLUE1	      0x0d     //深蓝色
+#define  IRKEY_YELLOW1        0x0c     //黄色
+#define  IRKEY_YELLOW2	      0x18     //深黄色
+#define  IRKEY_ORANGE1	      0x5e     //橙色
+#define  IRKEY_ORANGE2	      0x08     //浅橙色
+#define  IRKEY_BLUE2	      0x1c     //浅蓝色
+#define  IRKEY_BLUE3	      0x5a     //蓝色
+#define  IRKEY_PINK	          0x42     //粉红色
+#define  IRKEY_GREEN2	      0x52     //绿色
+#define  IRKEY_WHITE	      0x4a     //白色
+
+#define IRKEY_SNOW      0x03
+#define IRKEY_HEART     0x04
+#define IRKEY_METEOR    0x05
 
 
 typedef enum

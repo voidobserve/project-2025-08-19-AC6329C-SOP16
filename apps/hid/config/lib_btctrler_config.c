@@ -15,7 +15,6 @@
 #include "system/includes.h"
 #include "btcontroller_config.h"
 #include "bt_common.h"
-#include "le_common.h"
 
 /**
  * @brief Bluetooth Module
@@ -123,9 +122,6 @@ const int config_bt_temperature_pll_trim = 0;
 /*security check*/
 const int config_bt_security_vulnerability = 0;
 
-//DUT使用哪种模式通信: 0: HCI 1:2_wire
-const int config_dut_protocol_mode = 0;
-
 #if CONFIG_APP_STANDARD_KEYBOARD
 const int config_delete_link_key          = 0;           //配置是否连接失败返回PIN or Link Key Missing时删除linkKey
 #else
@@ -137,17 +133,7 @@ const int config_delete_link_key          = 1;
  */
 #if TCFG_USER_BLE_ENABLE
 
-#if CONFIG_BT_EXT_ADV_MODE
-#define EXT_ADV_CFG          LE_EXTENDED_ADVERTISING | LE_PERIODIC_ADVERTISING | CHANNEL_SELECTION_ALGORITHM_2
-#define EXT_ADV_CFG_HW       2// ext adv/ scan + creat_conn
-#else
-#define EXT_ADV_CFG          0
-#define EXT_ADV_CFG_HW       0
-#endif
-
 #define SET_SELECT_PHY_CFG   0
-
-const int config_btctler_coded_type = CONN_SET_PHY_OPTIONS_S2;
 
 #if CONFIG_BT_SM_SUPPORT_ENABLE
 #define SET_ENCRYPTION_CFG   LE_ENCRYPTION
@@ -157,37 +143,26 @@ const int config_btctler_coded_type = CONN_SET_PHY_OPTIONS_S2;
 
 #if CONFIG_BT_GATT_SERVER_NUM
 #define SET_SLAVE_ROLS_CFG   (LE_ADV | LE_SLAVE)
-// Slave multi-link
-const int config_btctler_le_slave_multilink = (CONFIG_BT_GATT_SERVER_NUM > 1);
 #else
 #define SET_SLAVE_ROLS_CFG   0
-// Slave multi-link
-const int config_btctler_le_slave_multilink = 0;
 #endif
 
 #if CONFIG_BT_GATT_CLIENT_NUM
 #define SET_MASTER_ROLS_CFG   (LE_SCAN | LE_INIT | LE_MASTER)
 const int config_btctler_le_afh_en = 1;
-// Master + Slave multi-link
-const int config_btctler_le_master_multilink = (CONFIG_BT_GATT_CLIENT_NUM + CONFIG_BT_GATT_SERVER_NUM) ? 1 : 0;
+const int config_btctler_le_master_multilink = (CONFIG_BT_GATT_CLIENT_NUM > 1);
 #else
 #define SET_MASTER_ROLS_CFG   0
 const int config_btctler_le_afh_en = 0;
 const int config_btctler_le_master_multilink = 0;
 #endif
 
-#if CONFIG_BLE_HIGH_SPEED
-const uint64_t config_btctler_le_features = SET_ENCRYPTION_CFG | SET_SELECT_PHY_CFG | LE_DATA_PACKET_LENGTH_EXTENSION | LE_2M_PHY | EXT_ADV_CFG;
-const int config_btctler_le_acl_packet_length = 251;
-#else
-const uint64_t config_btctler_le_features = SET_ENCRYPTION_CFG | SET_SELECT_PHY_CFG | EXT_ADV_CFG;
-const int config_btctler_le_acl_packet_length = 27;
-#endif
-
+const uint64_t config_btctler_le_features = SET_ENCRYPTION_CFG | SET_SELECT_PHY_CFG;
 const int config_btctler_le_roles    = SET_SLAVE_ROLS_CFG | SET_MASTER_ROLS_CFG;
-const int config_btctler_le_hw_nums = CONFIG_BT_GATT_CONNECTION_NUM + EXT_ADV_CFG_HW;
-const int config_btctler_le_rx_nums = ((CONFIG_BT_GATT_CONNECTION_NUM + EXT_ADV_CFG_HW) * 3) + 2;
-const int config_btctler_le_acl_total_nums = ((CONFIG_BT_GATT_CONNECTION_NUM + EXT_ADV_CFG_HW) * 3) + 1;
+const int config_btctler_le_hw_nums = CONFIG_BT_GATT_CONNECTION_NUM;
+const int config_btctler_le_rx_nums = (CONFIG_BT_GATT_CONNECTION_NUM * 3) + 2;
+const int config_btctler_le_acl_packet_length = 27;
+const int config_btctler_le_acl_total_nums = (CONFIG_BT_GATT_CONNECTION_NUM * 3);
 
 #else
 //no support ble
@@ -197,7 +172,6 @@ const int config_btctler_le_hw_nums = 0;
 const int config_btctler_le_rx_nums = 0;
 const int config_btctler_le_acl_packet_length = 0;
 const int config_btctler_le_acl_total_nums = 0;
-const int config_btctler_le_slave_multilink = 0;
 const int config_btctler_le_master_multilink = 0;
 #endif
 
@@ -205,8 +179,8 @@ const int config_btctler_le_master_multilink = 0;
 const int config_btctler_le_slave_conn_update_winden = 500;//range:100 to 2500
 
 // LE vendor baseband
-u32 config_vendor_le_bb = 0;
-/* u32 config_vendor_le_bb = VENDOR_BB_MD_CLOSE | VENDOR_BB_CONNECT_SLOT; */
+const u32 config_vendor_le_bb = 0;
+/* const u32 config_vendor_le_bb = VENDOR_BB_MD_CLOSE | VENDOR_BB_CONNECT_SLOT; */
 
 /*-----------------------------------------------------------*/
 /**
@@ -252,9 +226,9 @@ const char log_tag_const_d_HCI_LMP AT(.LOG_TAG_CONST)  = CONFIG_DEBUG_LIB(0);
 const char log_tag_const_w_HCI_LMP AT(.LOG_TAG_CONST)  = CONFIG_DEBUG_LIB(1);
 const char log_tag_const_e_HCI_LMP AT(.LOG_TAG_CONST)  = CONFIG_DEBUG_LIB(1);
 
-const char log_tag_const_v_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(0);
+const char log_tag_const_v_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(1);
 const char log_tag_const_i_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(1);
-const char log_tag_const_d_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(0);
+const char log_tag_const_d_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(1);
 const char log_tag_const_w_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(1);
 const char log_tag_const_e_LMP AT(.LOG_TAG_CONST) = CONFIG_DEBUG_LIB(1);
 

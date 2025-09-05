@@ -19,4 +19,14 @@ uint16_t
 uint32_t
   WS2812FX_color_blend(uint32_t, uint32_t, uint8_t);
 
+// 反向移动某一段
+// s起始地址
+// e结束地址
+// 条件：e>s
+void WS2812FX_move_reverse(u16 s, u16 e);
+// 正向移动某一段
+// s起始地址
+// e结束地址
+// 条件：e>s
+void WS2812FX_move_forward(u16 s, u16 e);
 #endif

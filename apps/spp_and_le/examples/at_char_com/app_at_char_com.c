@@ -15,10 +15,9 @@
 #include "app_charge.h"
 #include "app_power_manage.h"
 #include "app_comm_bt.h"
-#include "ble_at_char_client.h"
 
 #define LOG_TAG_CONST       AT_COM
-/* #define LOG_TAG             "[AT_COM]" */
+#define LOG_TAG             "[AT_COM]"
 #define LOG_ERROR_ENABLE
 #define LOG_DEBUG_ENABLE
 #define LOG_INFO_ENABLE
@@ -39,6 +38,27 @@
 #define     APP_IO_OUTPUT_1(i,x)      // {JL_PORT##i->DIR &= ~BIT(x), JL_PORT##i->OUT |= BIT(x);}
 
 static u8 is_app_atchar_active = 1;
+static struct ble_client_operation_t *ble_client_api;
+//--------------------------------------
+static void atchar_client_event_callback(le_client_event_e event, u8 *packet, int size)
+{
+}
+
+static const client_conn_cfg_t client_conn_config = {
+    .match_dev_cfg[0] = NULL,
+    .match_dev_cfg[1] = NULL,
+    .match_dev_cfg[2] = NULL,
+    .security_en = 0, //支持加密使能
+    .event_callback = atchar_client_event_callback,
+};
+
+static void atchar_client_config_init(void)
+{
+    ble_client_api = ble_get_client_operation_table();
+    ble_client_api->init_config(0, &client_conn_config);
+    /* client_clear_bonding_info();//for test */
+}
+
 //---------------------------------------------------------------------
 extern void ble_test_auto_scan(u8 en);
 extern void ble_test_auto_adv(u8 en);
@@ -46,17 +66,7 @@ extern void at_cmd_init(void);
 extern void set_at_uart_wakeup(void);
 //---------------------------------------------------------------------
 
-void atchar_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void atchar_set_soft_poweroff(void)
+void atchar_set_soft_poweroff(void)
 {
     log_info("set_soft_poweroff\n");
     is_app_atchar_active = 1;
@@ -72,19 +82,9 @@ static void atchar_set_soft_poweroff(void)
 #endif
 }
 
-static void at_set_soft_poweroff(void)
+void at_set_soft_poweroff(void)
 {
     atchar_set_soft_poweroff();
-}
-
-void at_set_low_power_mode(u8 enable)
-{
-    is_app_atchar_active = !enable;
-}
-
-u8 at_get_low_power_mode(void)
-{
-    return !is_app_atchar_active;
 }
 
 #define BLE_AT_TEST_SEND_DATA    0
@@ -104,18 +104,17 @@ static void atchar_app_start()
     log_info("app_file: %s", __FILE__);
 
     clk_set("sys", BT_NORMAL_HZ);
-#if TCFG_USER_BLE_ENABLE
     u32 sys_clk =  clk_get("sys");
     bt_pll_para(TCFG_CLOCK_OSC_HZ, sys_clk, 0, 0);
 
     APP_IO_OUTPUT_0(B, 0);
 
-
+#if TCFG_USER_BLE_ENABLE
     btstack_ble_start_before_init(NULL, 0);
-    btstack_init();
+    atchar_client_config_init();
 #endif
 
-
+    btstack_init();
     /* 按键消息使能 */
     sys_key_event_enable();
 
@@ -238,7 +237,7 @@ static void atchar_key_event_handler(struct sys_event *event)
         if (event_type == KEY_EVENT_TRIPLE_CLICK
             && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
             //for test
-            atchar_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            atchar_set_soft_poweroff();
             return;
         }
 
@@ -246,10 +245,11 @@ static void atchar_key_event_handler(struct sys_event *event)
         }
     }
 }
-
 extern void at_cmd_rx_handler(void);
 extern cbuffer_t bt_to_uart_cbuf;
-static u8 uart_sent_buf[BT_UART_FIFIO_BUFFER_SIZE];
+u8 uart_sent_buf[UART_FIFIO_BUF_LEN] = {0};
+extern int at_uart_send_packet(const u8 *packet, int size);
+
 static int atchar_event_handler(struct application *app, struct sys_event *event)
 {
     u32 cbuf_len = 0;
@@ -264,11 +264,11 @@ static int atchar_event_handler(struct application *app, struct sys_event *event
         } else if ((u32)event->arg == SYS_BT_EVENT_TYPE_HCI_STATUS) {
             atchar_bt_hci_event_handler(&event->u.bt);
         } else if ((u32)event->arg == SYS_BT_EVENT_FORM_AT) {
-            cbuf_len = cbuf_get_data_size(&bt_to_uart_cbuf);
-            if (cbuf_len) {
-                cbuf_len = cbuf_read(&bt_to_uart_cbuf, uart_sent_buf, cbuf_len);
-                ct_uart_send_packet(uart_sent_buf, cbuf_len);
-            }
+            cbuf_len = bt_to_uart_cbuf.data_len;
+            /* log_info("i get notify");  */
+            cbuf_read(&bt_to_uart_cbuf, uart_sent_buf, cbuf_len);
+            at_uart_send_packet(uart_sent_buf, cbuf_len);
+
             /* put_buf(uart_sent_buf, cbuf_len);  */
         }
         return 0;

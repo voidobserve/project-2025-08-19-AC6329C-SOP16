@@ -40,12 +40,8 @@
 
 
 
-
-
-
-
-  _local_irq_enable = ABSOLUTE(0x106d98);
-  _local_irq_disable = ABSOLUTE(0x106d9c);
+  local_irq_enable = ABSOLUTE(0x106d98);
+  local_irq_disable = ABSOLUTE(0x106d9c);
   lp_signature_set = ABSOLUTE(0x106da0);
   os_init = ABSOLUTE(0x106da4);
   os_start = ABSOLUTE(0x106da8);
@@ -208,11 +204,7 @@ _start
 
 sdfile_vfs_ops
 sbc_decoder
-
-
-
-
-
+msbc_decoder
 sbc_hwaccel
 cvsd_decoder
 pcm_decoder
@@ -316,22 +308,6 @@ SECTIONS
         *(.ble_mesh_const)
         *(.ble_mesh_tinycrypt_const)
         BTSTACK_LE_HOST_MESH_CODE_SIZE = ABSOLUTE(. - BTSTACK_LE_HOST_MESH_CODE_START);
-
-        _fmna_const_begin = .;
-        *(.fmna_stack_const)
-        *(.fmna_plaform_const)
-        *(.fmna_crypto_const)
-        _fmna_const_end = .;
-        . = ALIGN(4);
-        _fmna_code_begin = .;
-        *(.fmna_stack_code)
-        *(.fmna_plaform_code)
-        *(.fmna_crypto_code)
-        _fmna_code_end = .;
-        btstack_fmna_const_size = _fmna_const_end - _fmna_const_begin;
-        btstack_fmna_code_size = _fmna_code_end - _fmna_code_begin;
-        . = ALIGN(4);
-
 
         btstack_code_end = .;
   . = ALIGN(4);
@@ -560,65 +536,6 @@ SECTIONS
 
 
         . = ALIGN(4);
-  *(.audio_decoder_code)
-  *(.audio_decoder_const)
-  *(.audio_encoder_code)
-  *(.audio_encoder_const)
-  *(.audio_codec_code)
-  . = ALIGN(4);
-  *(.media.audio_decoder.text)
-  *(.media.audio_encoder.text)
-        . = ALIGN(4);
-  *(.usbc_encoder_code)
-  *(.usbc_decoder_code)
-        *(.resample_fastcal_const)
-        *(.resample_fastcal_code)
-        *(.resample_fastcal_sparse_code)
-
-
-
-
-        *(.adpcm_encode_sparse_code)
-        *(.adpcm_encode_code)
-        *(.adpcm_encode_const)
-        *(.pcm_code)
-        . = ALIGN(4);
-  *(.wav_code)
-  *(.wav_const)
-  *(.wav_dec_sparse_code)
-  *(.wav_dec_const)
-  *(.wav_dec_code)
-     *(.wtgv2_code)
-  *(.wtgv2_const)
-  *(.wtgv2dec_code)
-  *(.wtgv2dec_const)
-  *(.wtgv2dec_str)
-  *(.wtg_decv2_sparse_code)
-  *(.lc3_decoder_code)
-  *(.msbc_codec_const)
-  *(.msbc_codec_code)
-  *(.msbc_const)
-  *(.msbc_code)
-        *(.audio_pwm_code)
-  *(.opus_code)
-     *(.opus_encoder_code)
-  *(.opus_encoder_const)
-  *(.opus_enc_const)
-  *(.opus_enc_code)
-  . = ALIGN(4);
-     _audio_decoder_begin = .;
-     PROVIDE(audio_decoder_begin = .);
-         KEEP(*(.audio_decoder))
-     _audio_decoder_end = .;
-     PROVIDE(audio_decoder_end = .);
-
-     _audio_encoder_begin = .;
-     PROVIDE(audio_encoder_begin = .);
-         KEEP(*(.audio_encoder))
-     _audio_encoder_end = .;
-     PROVIDE(audio_encoder_end = .);
-
-        . = ALIGN(4);
         __VERSION_BEGIN = .;
         KEEP(*(.sys.version))
         __VERSION_END = .;
@@ -672,14 +589,6 @@ SECTIONS
         *(.ble_mesh_data)
         *(.ble_mesh_tinycrypt_data)
         BTSTACK_LE_HOST_MESH_DATA_SIZE = ABSOLUTE(. - BTSTACK_LE_HOST_MESH_DATA_START);
-
-        _fmna_data_begin = .;
-        *(.fmna_stack_data)
-        *(.fmna_plaform_data)
-        *(.fmna_crypto_data)
-        _fmna_data_end = .;
-        btstack_fmna_data_size = _fmna_data_end - _fmna_data_begin;
-        . = ALIGN(4);
 
 
         btstack_data_end = .;
@@ -797,26 +706,6 @@ SECTIONS
         system_data_end = .;
 
   . = ALIGN(4);
-  *(.wav_data)
-  *(.usbc_encoder_data)
-  *(.usbc_decoder_data)
-        *(.resample_fastcal_data)
-     *(.wtgv2_data)
-  *(.wtgv2dec_data)
-  *(.opus_encoder_data)
-        *(.opus_enc_data)
-
-
-
-
-        *(.msbc_data)
-        *(.msbc_codec_data)
-  . = ALIGN(4);
-
-
-
-
-  . = ALIGN(4);
  } > ram0
 
  .irq_stack ALIGN(32):
@@ -850,21 +739,6 @@ SECTIONS
             *(.usb_config_var)
             *(.cdc_var)
         . = ALIGN(4);
-         *(.wav_bss)
-   *(.wtgv2_bss)
-   *(.wtgv2dec_bss)
-   *(.opus_encoder_bss)
-   *(.opus_enc_bss)
-            *(.resample_fastcal_bss)
-
-
-
-
-
-
-        *(.msbc_bss)
-        *(.msbc_codec_bss)
-        . = ALIGN(4);
 
 
         btstack_bss_start = .;
@@ -880,15 +754,6 @@ SECTIONS
         *(.ble_mesh_bss)
         *(.ble_mesh_tinycrypt_bss)
         BTSTACK_LE_HOST_MESH_BSS_SIZE = ABSOLUTE(. - BTSTACK_LE_HOST_MESH_BSS_START);
-
-        . = ALIGN(4);
-        _fmna_bss_begin = .;
-        *(.fmna_stack_bss)
-        *(.fmna_plaform_bss)
-        *(.fmna_crypto_bss)
-        _fmna_bss_end = .;
-        btstack_fmna_bss_size = _fmna_bss_end - _fmna_bss_begin;
-        . = ALIGN(4);
 
         btstack_bss_end = .;
 
@@ -1158,7 +1023,6 @@ SECTIONS
 
         btctler_data_end = .;
 
-  . = ALIGN(4);
     } > ram0
 
     .bss (NOLOAD) :ALIGN(4)
@@ -1222,8 +1086,6 @@ SECTIONS
         BTCTLER_CL_BSS_SIZE = ABSOLUTE(. - BTCTLER_CL_BSS_START);
 
         btctler_bss_end = .;
-
-  . = ALIGN(4);
     } > ram0
 
     .text : ALIGN(4)
@@ -1287,7 +1149,6 @@ SECTIONS
 
         btctler_code_end = .;
 
-  . = ALIGN(4);
     } > code0
 
 
@@ -1373,7 +1234,6 @@ SECTIONS
         update_data_start = .;
 
         update_data_end = .;
-  . = ALIGN(4);
     } > ram0
 
     .bss (NOLOAD) :ALIGN(4)
@@ -1381,9 +1241,7 @@ SECTIONS
         update_bss_start = .;
 
         *(.update_bss)
-
         update_bss_end = .;
-  . = ALIGN(4);
     } > ram0
 
     .text : ALIGN(4)
@@ -1395,7 +1253,6 @@ SECTIONS
   *(.update_code)
 
   update_code_end = .;
-  . = ALIGN(4);
     } > code0
 
 
@@ -1437,7 +1294,6 @@ SECTIONS
 
         *(.sd_var)
         driver_bss_end = .;
-  . = ALIGN(4);
     } > ram0
 
     .text : ALIGN(4)
@@ -1473,21 +1329,17 @@ SECTIONS
 text_begin = ADDR(.text);
 text_size = SIZEOF(.text);
 text_end = text_begin + text_size;
-ASSERT((text_size % 4) == 0,"!!! text_size Not Align 4 Bytes !!!");
 
 bss_begin = ADDR(.bss);
 bss_size = SIZEOF(.bss);
 bss_end = bss_begin + bss_size;
-ASSERT((bss_size % 4) == 0,"!!! bss_size Not Align 4 Bytes !!!");
 
 nvbss_begin = NVRAM_DATA_START;
 nvbss_size = NVRAM_LIMIT - nvbss_begin;
-ASSERT((nvbss_size % 4) == 0,"!!! nvbss_size Not Align 4 Bytes !!!");
 
 data_addr = ADDR(.data);
 data_begin = text_begin + text_size;
 data_size = SIZEOF(.data);
-ASSERT((data_size % 4) == 0,"!!! data_size Not Align 4 Bytes !!!");
 
 
 
@@ -1496,7 +1348,6 @@ ASSERT((data_size % 4) == 0,"!!! data_size Not Align 4 Bytes !!!");
 data_code_addr = ADDR(.data_code);
 data_code_begin = data_begin + data_size;
 data_code_size = SIZEOF(.data_code);
-ASSERT((data_code_size % 4) == 0,"!!! data_code_size Not Align 4 Bytes !!!");
 
 
 aec_addr = ADDR(.overlay_aec);

@@ -44,20 +44,8 @@
 #define log_info_hexdump(...)
 #endif
 
-/*
- 打开流控使能后,确定使能接口 att_server_flow_enable 被调用
- 然后使用过程 通过接口 att_server_flow_hold 来控制流控开关
- 注意:流控只能控制对方使用带响应READ/WRITE等命令方式
- 例如:ATT_WRITE_REQUEST = 0x12
- */
-#define ATT_DATA_RECIEVT_FLOW      0//流控功能使能
-
-
 //测试NRF连接,工具不会主动发起交换流程,需要手动操作; 但设备可配置主动发起MTU长度交换请求
 #define ATT_MTU_REQUEST_ENALBE     0    /*配置1,就是设备端主动发起交换*/
-
-//检测对方的系统类型，ios or 非ios
-#define ATT_CHECK_REMOTE_REQUEST_ENALBE     0    /*配置1,就是设备端主动检查*/
 
 //ATT发送的包长,    note: 23 <=need >= MTU
 #define ATT_LOCAL_MTU_SIZE        (512) /*一般是主机发起交换,如果主机没有发起,设备端也可以主动发起(ATT_MTU_REQUEST_ENALBE set 1)*/
@@ -73,12 +61,8 @@
 
 #define TEST_TRANS_CHANNEL_DATA      0 /*测试记录收发数据速度*/
 #define TEST_TRANS_NOTIFY_HANDLE     ATT_CHARACTERISTIC_ae02_01_VALUE_HANDLE /*主动发送hanlde,为空则不测试发数*/
-#if CONFIG_BLE_HIGH_SPEED
-#define TEST_TRANS_TIMER_MS          5
-#else
 #define TEST_TRANS_TIMER_MS          500
-#endif
-#define TEST_PAYLOAD_LEN            (244)/*发送配PDU长度是251的包*/
+#define TEST_PAYLOAD_LEN            (256)
 
 static u32 trans_recieve_test_count;
 static u32 trans_send_test_count;
@@ -87,14 +71,9 @@ static u32 trans_send_test_count;
 //连接参数更新请求设置
 //是否使能参数请求更新,0--disable, 1--enable
 static uint8_t trans_connection_update_enable = 1; ///0--disable, 1--enable
-
-//请求的参数数组表,排队方式请求;哪组对方接受就用那组
+//当前请求的参数表index
+//参数表
 static const struct conn_update_param_t trans_connection_param_table[] = {
-
-#if CONFIG_BLE_HIGH_SPEED
-    {6, 12,  10, 400},// ios fast
-#endif
-
     {16, 24, 10, 600},//11
     {12, 28, 10, 600},//3.7
     {8,  20, 10, 600},
@@ -106,14 +85,6 @@ static const struct conn_update_param_t trans_connection_param_table[] = {
 #define EIR_TAG_STRING   0xd6, 0x05, 0x08, 0x00, 'J', 'L', 'A', 'I', 'S', 'D','K'
 static const char user_tag_string[] = {EIR_TAG_STRING};
 
-//定义的产品信息,for test
-#define  PNP_VID_SOURCE   0x02
-#define  PNP_VID          0x05ac //0x05d6
-#define  PNP_PID          0x022C //
-#define  PNP_PID_VERSION  0x011b //1.1.11
-
-static const u8 trans_PNP_ID[] = {PNP_VID_SOURCE, PNP_VID & 0xFF, PNP_VID >> 8, PNP_PID & 0xFF, PNP_PID >> 8, PNP_PID_VERSION & 0xFF, PNP_PID_VERSION >> 8};
-
 static u8  trans_adv_data[ADV_RSP_PACKET_MAX];//max is 31
 static u8  trans_scan_rsp_data[ADV_RSP_PACKET_MAX];//max is 31
 static u8  trans_test_read_write_buf[4];
@@ -124,8 +95,6 @@ static uint16_t trans_att_read_callback(hci_con_handle_t connection_handle, uint
 static int trans_att_write_callback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size);
 static int trans_event_packet_handler(int event, u8 *packet, u16 size, u8 *ext_param);
 extern void uart_db_regiest_recieve_callback(void *rx_cb);
-//-------------------------------------------------------------------------------------
-
 //-------------------------------------------------------------------------------------
 //输入passkey 加密
 #define PASSKEY_ENABLE                     0
@@ -165,11 +134,7 @@ static gatt_ctrl_t trans_gatt_control_block = {
     .server_config = NULL,
 #endif
 
-#if CONFIG_BT_GATT_CLIENT_NUM
-    .client_config = &trans_client_init_cfg,
-#else
     .client_config = NULL,
-#endif
 
 #if CONFIG_BT_SM_SUPPORT_ENABLE
     .sm_config = &trans_sm_init_config,
@@ -263,12 +228,12 @@ static void trans_test_send_audio_data(int init_flag)
 /*************************************************************************************************/
 static void trans_uart_rx_to_ble(u8 *packet, u32 size)
 {
-    if (trans_con_handle && ble_comm_att_check_send(trans_con_handle, size) &&
-        ble_gatt_server_characteristic_ccc_get(trans_con_handle, ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE)) {
-        ble_comm_att_send_data(trans_con_handle, ATT_CHARACTERISTIC_ae02_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
-    } else {
-        log_info("drop uart data!!!\n");
-    }
+    // if (trans_con_handle && ble_comm_att_check_send(trans_con_handle, size) &&
+    //     ble_gatt_server_characteristic_ccc_get(trans_con_handle, ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE)) {
+    //     ble_comm_att_send_data(trans_con_handle, ATT_CHARACTERISTIC_ae02_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
+    // } else {
+    //     log_info("drop uart data!!!\n");
+    // }
 }
 
 /*************************************************************************************************/
@@ -309,38 +274,16 @@ static void trans_resume_all_ccc_enable(u16 conn_handle, u8 update_request)
 #if RCSP_BTMATE_EN
     ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae02_02_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
 #endif
-    ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
-    ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae04_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
-    ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_INDICATE);
-    ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae3c_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
+    // ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae02_02_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
+    ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_fff1_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
+    // ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_INDICATE);
+    // ble_gatt_server_characteristic_ccc_set(conn_handle, ATT_CHARACTERISTIC_ae3c_01_CLIENT_CONFIGURATION_HANDLE, ATT_OP_NOTIFY);
 
     if (update_request) {
         trans_send_connetion_updata_deal(conn_handle);
     }
 }
 
-/*************************************************************************************************/
-/*!
- *  \brief      反馈检查对方的操作系统
- *
- *  \param      [in]
- *
- *  \return
- *
- *  \note 参考识别手机系统
- */
-/*************************************************************************************************/
-static void trans_check_remote_result(u16 con_handle, remote_type_e remote_type)
-{
-    char *str;
-    if (REMOTE_TYPE_IOS == remote_type) {
-        str = "is";
-    } else {
-        str = "not";
-    }
-
-    log_info("trans_check %02x:remote_type= %02x, %s ios", con_handle, remote_type, str);
-}
 
 /*************************************************************************************************/
 /*!
@@ -392,24 +335,11 @@ static int trans_event_packet_handler(int event, u8 *packet, u16 size, u8 *ext_p
         //for test 串口数据直通到蓝牙
         uart_db_regiest_recieve_callback(trans_uart_rx_to_ble);
 #endif
-
-#if CONFIG_BT_GATT_CLIENT_NUM
-#if CONFIG_BT_SM_SUPPORT_ENABLE == 0
-        trans_client_search_remote_profile(trans_con_handle);
-#endif
-#endif
-
-#if ATT_CHECK_REMOTE_REQUEST_ENALBE
-        att_server_set_check_remote(trans_con_handle, trans_check_remote_result);
-#endif
         break;
 
     case GATT_COMM_EVENT_DISCONNECT_COMPLETE:
         log_info("disconnect_handle:%04x,reason= %02x\n", little_endian_read_16(packet, 0), packet[2]);
         if (trans_con_handle == little_endian_read_16(packet, 0)) {
-#if CONFIG_BT_GATT_CLIENT_NUM
-            trans_client_search_remote_stop(trans_con_handle);
-#endif
             trans_con_handle = 0;
         }
         break;
@@ -419,10 +349,6 @@ static int trans_event_packet_handler(int event, u8 *packet, u16 size, u8 *ext_p
         if (packet[3] == LINK_ENCRYPTION_RECONNECT) {
             trans_resume_all_ccc_enable(little_endian_read_16(packet, 0), 1);
         }
-
-#if CONFIG_BT_GATT_CLIENT_NUM
-        trans_client_search_remote_profile(trans_con_handle);
-#endif
         break;
 
     case GATT_COMM_EVENT_CONNECTION_UPDATE_COMPLETE:
@@ -433,10 +359,7 @@ static int trans_event_packet_handler(int event, u8 *packet, u16 size, u8 *ext_p
         break;
 
     case GATT_COMM_EVENT_CONNECTION_UPDATE_REQUEST_RESULT:
-        break;
-
     case GATT_COMM_EVENT_MTU_EXCHANGE_COMPLETE:
-        log_info("con_handle= %02x, ATT MTU = %u\n", little_endian_read_16(packet, 0), little_endian_read_16(packet, 2));
         break;
 
     case GATT_COMM_EVENT_SERVER_STATE:
@@ -500,40 +423,26 @@ static uint16_t trans_att_read_callback(hci_con_handle_t connection_handle, uint
     }
     break;
 
-    case ATT_CHARACTERISTIC_ae10_01_VALUE_HANDLE:
-        att_value_len = sizeof(trans_test_read_write_buf);
+      case ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE:
+        char *gap_name = ble_comm_get_gap_name();
+        att_value_len = strlen(gap_name);
+
         if ((offset >= att_value_len) || (offset + buffer_size) > att_value_len) {
             break;
         }
 
         if (buffer) {
-            memcpy(buffer, &trans_test_read_write_buf[offset], buffer_size);
+            memcpy(buffer, &gap_name[offset], buffer_size);
             att_value_len = buffer_size;
+            log_info("\n------read gap_name: %s\n", gap_name);
         }
         break;
-
-    case ATT_CHARACTERISTIC_ae04_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae3c_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_2a05_01_CLIENT_CONFIGURATION_HANDLE:
+    case ATT_CHARACTERISTIC_fff1_01_CLIENT_CONFIGURATION_HANDLE:
         if (buffer) {
-            buffer[0] = ble_gatt_server_characteristic_ccc_get(connection_handle, handle);
+            buffer[0] = att_get_ccc_config(handle);
             buffer[1] = 0;
         }
         att_value_len = 2;
-        break;
-
-    case ATT_CHARACTERISTIC_2a50_01_VALUE_HANDLE:
-        log_info("read PnP_ID\n");
-        att_value_len = sizeof(trans_PNP_ID);
-        if ((offset >= att_value_len) || (offset + buffer_size) > att_value_len) {
-            break;
-        }
-        if (buffer) {
-            memcpy(buffer, &trans_PNP_ID[offset], buffer_size);
-            att_value_len = buffer_size;
-        }
         break;
 
     default:
@@ -578,60 +487,23 @@ static int trans_att_write_callback(hci_con_handle_t connection_handle, uint16_t
 #endif
 
     switch (handle) {
-
-    case ATT_CHARACTERISTIC_2a00_01_VALUE_HANDLE:
-        break;
-
-    case ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae04_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae3c_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_2a05_01_CLIENT_CONFIGURATION_HANDLE:
+    case ATT_CHARACTERISTIC_fff1_01_CLIENT_CONFIGURATION_HANDLE:
+        // set_ble_work_state(BLE_ST_NOTIFY_IDICATE);
         trans_send_connetion_updata_deal(connection_handle);
         log_info("\n------write ccc:%04x,%02x\n", handle, buffer[0]);
-        ble_gatt_server_characteristic_ccc_set(connection_handle, handle, buffer[0]);
+        att_set_ccc_config(handle, buffer[0]);
+        break;
+        
+    case ATT_CHARACTERISTIC_fff1_01_VALUE_HANDLE:
+        log_info("\n-fff1_rx(%d):", buffer_size);
+        printf_buf(buffer, buffer_size);
+        extern void parse_led_strip_data(u8 *pBuf, u8);
+        extern void parse_zd_data(unsigned char *LedCommand);
+        parse_zd_data(buffer);
+        parse_led_strip_data(buffer,buffer_size);
         break;
 
-    case ATT_CHARACTERISTIC_ae10_01_VALUE_HANDLE:
-        tmp16 = sizeof(trans_test_read_write_buf);
-        if ((offset >= tmp16) || (offset + buffer_size) > tmp16) {
-            break;
-        }
-        memcpy(&trans_test_read_write_buf[offset], buffer, buffer_size);
-        log_info("\n-ae10_rx(%d):", buffer_size);
-        put_buf(buffer, buffer_size);
-        break;
 
-    case ATT_CHARACTERISTIC_ae01_01_VALUE_HANDLE:
-
-#if TEST_TRANS_CHANNEL_DATA
-        /* putchar('R'); */
-        trans_recieve_test_count += buffer_size;
-        break;
-#endif
-
-        log_info("\n-ae01_rx(%d):", buffer_size);
-        put_buf(buffer, buffer_size);
-
-        //收发测试，自动发送收到的数据;for test
-        if (ble_comm_att_check_send(connection_handle, buffer_size) &&
-            ble_gatt_server_characteristic_ccc_get(trans_con_handle, ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE)) {
-            log_info("-loop send1\n");
-            ble_comm_att_send_data(connection_handle, ATT_CHARACTERISTIC_ae02_01_VALUE_HANDLE, buffer, buffer_size, ATT_OP_AUTO_READ_CCC);
-        }
-        break;
-
-    case ATT_CHARACTERISTIC_ae03_01_VALUE_HANDLE:
-        log_info("\n-ae03_rx(%d):", buffer_size);
-        put_buf(buffer, buffer_size);
-
-        //收发测试，自动发送收到的数据;for test
-        if (ble_comm_att_check_send(connection_handle, buffer_size) && \
-            ble_gatt_server_characteristic_ccc_get(trans_con_handle, ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE)) {
-            log_info("-loop send2\n");
-            ble_comm_att_send_data(connection_handle, ATT_CHARACTERISTIC_ae05_01_VALUE_HANDLE, buffer, buffer_size, ATT_OP_AUTO_READ_CCC);
-        }
-        break;
 
 #if RCSP_BTMATE_EN
     case ATT_CHARACTERISTIC_ae02_02_CLIENT_CONFIGURATION_HANDLE:
@@ -650,9 +522,6 @@ static int trans_att_write_callback(hci_con_handle_t connection_handle, uint16_t
         break;
 #endif
 
-    case ATT_CHARACTERISTIC_ae3b_01_VALUE_HANDLE:
-        log_info("\n-ae3b_rx(%d):", buffer_size);
-        put_buf(buffer, buffer_size);
 
 #if TEST_AUDIO_DATA_UPLOAD
         if (0 == memcmp(buffer, "start", 5)) {
@@ -693,15 +562,21 @@ static int trans_make_set_adv_data(void)
 
     offset += make_eir_packet_val(&buf[offset], offset, HCI_EIR_DATATYPE_COMPLETE_16BIT_SERVICE_UUIDS, 0xAF30, 2);
 
-    char *gap_name = ble_comm_get_gap_name();
-    u8 name_len = strlen(gap_name);
-    u8 vaild_len = ADV_RSP_PACKET_MAX - (offset + 2);
-    if (name_len < vaild_len) {
-        offset += make_eir_packet_data(&buf[offset], offset, HCI_EIR_DATATYPE_COMPLETE_LOCAL_NAME, (void *)gap_name, name_len);
-        adv_name_ok = 1;
-    } else {
-        adv_name_ok = 0;
-    }
+    // u8 info[13];    //客户机型数据
+    // info[0] = 'Z';
+    // info[1] = 'D';
+    // info[2] = 0;
+    // info[3] = 0x9d;
+    // info[4] = 3;
+    // info[5] = 0x5d;
+    // info[6] = 0x71;
+
+    le_controller_get_mac(&info[7]);    //获取ble的蓝牙public地址
+
+    offset += make_eir_packet_data(&buf[offset],offset,HCI_EIR_DATATYPE_MANUFACTURER_SPECIFIC_DATA,info,13);
+
+    // offset += make_eir_packet_data(&buf[offset], offset, HCI_EIR_DATATYPE_COMPLETE_LOCAL_NAME, (void *)gap_name, name_len);
+    // adv_name_ok = 1;
 
     if (offset > ADV_RSP_PACKET_MAX) {
         puts("***trans_adv_data overflow!!!!!!\n");
@@ -872,18 +747,14 @@ static void trans_test_send_data(void)
     send_index++;
 
 #if TEST_TRANS_NOTIFY_HANDLE
-    do {
-        if (ble_comm_att_check_send(trans_con_handle, send_len) && ble_gatt_server_characteristic_ccc_get(trans_con_handle, TEST_TRANS_NOTIFY_HANDLE + 1)) {
-            count++;
-            ret = ble_comm_att_send_data(trans_con_handle, TEST_TRANS_NOTIFY_HANDLE, &count, send_len, ATT_OP_AUTO_READ_CCC);
-            if (!ret) {
-                /* putchar('T'); */
-                trans_send_test_count += send_len;
-            }
-        } else {
-            break;
+    count++;
+    if (ble_comm_att_check_send(trans_con_handle, send_len) && ble_gatt_server_characteristic_ccc_get(trans_con_handle, TEST_TRANS_NOTIFY_HANDLE + 1)) {
+        ret = ble_comm_att_send_data(trans_con_handle, TEST_TRANS_NOTIFY_HANDLE, &count, send_len, ATT_OP_AUTO_READ_CCC);
+        if (!ret) {
+            /* putchar('T'); */
+            trans_send_test_count += send_len;
         }
-    } while (ret == 0);
+    }
 #endif
 
     if (send_index >= time_index_max) {
@@ -900,41 +771,8 @@ static void trans_test_send_data(void)
     }
 #endif
 }
-/*************************************************************************************************/
-/*!
- *  \brief      控制应答对方READ/WRITE行为的响应包RESPONSE的回复
- *
- *  \param      [in]流控使能 en: 1-停止收数 or 0-继续收数
- *
- *  \return
- *
- *  \note
- */
-/*************************************************************************************************/
-int ble_trans_flow_enable(u8 en)
-{
-    int ret = -1;
 
-#if ATT_DATA_RECIEVT_FLOW
-    if (trans_con_handle) {
-        att_server_flow_hold(trans_con_handle, en);
-        ret = 0;
-        log_info("ble_trans_flow_enable:%d\n", en);
-    }
-#endif
 
-    return ret;
-}
-
-//for test
-static void timer_trans_flow_test(void)
-{
-    static u8 sw = 0;
-    if (trans_con_handle) {
-        sw = !sw;
-        ble_trans_flow_enable(sw);
-    }
-}
 
 /*************************************************************************************************/
 /*!
@@ -960,30 +798,25 @@ void bt_ble_init(void)
     trans_con_handle = 0;
     trans_server_init();
 
-#if CONFIG_BT_GATT_CLIENT_NUM
-    trans_client_init();
-#endif
+    extern u8 ble_state;
+    if(ble_state)
+    {
+        ble_module_enable(1);       //蓝牙模式使能
+    }
+    else
+    {
 
-#if CONFIG_BT_GATT_CLIENT_NUM && CONFIG_BT_SM_SUPPORT_ENABLE
-    trans_ios_services_init();
-#endif
-
-#if ATT_DATA_RECIEVT_FLOW
-    log_info("att_server_flow_enable\n");
-    att_server_flow_enable(1);
-//    sys_timer_add(0, timer_trans_flow_test, 5000);
-#endif
-
-    ble_module_enable(1);
+        ble_module_enable(0);       //蓝牙模式失能
+    }
 
 #if TEST_TRANS_CHANNEL_DATA
     if (TEST_TRANS_TIMER_MS < 10) {
-        sys_s_hi_timer_add(0, trans_test_send_data, TEST_TRANS_TIMER_MS);
+        sys_hi_timer_add(0, trans_test_send_data, TEST_TRANS_TIMER_MS);
     } else {
         sys_timer_add(0, trans_test_send_data, TEST_TRANS_TIMER_MS);
     }
 #endif
-
+printf("***************************************8888");
 }
 
 /*************************************************************************************************/
@@ -1000,15 +833,6 @@ void bt_ble_init(void)
 void bt_ble_exit(void)
 {
     log_info("%s\n", __FUNCTION__);
-
-#if CONFIG_BT_GATT_CLIENT_NUM
-    trans_client_exit();
-#endif
-
-#if CONFIG_BT_GATT_CLIENT_NUM && CONFIG_BT_SM_SUPPORT_ENABLE
-    trans_ios_services_exit();
-#endif
-
     ble_module_enable(0);
     ble_comm_exit();
 }
@@ -1051,6 +875,31 @@ void ble_server_send_test_key_num(u8 key_num)
     }
 }
 
+//NOTIFY 和 INDICATE 发送接口，发送前调接口 app_send_user_data_check 检查
+int app_send_user_data(u16 handle, u8 *data, u16 len, u8 handle_type)
+{
+    u32 ret = APP_BLE_NO_ERROR;
+
+    printf("------------%s---------------\n", __FUNCTION__);       //打印功能函数名
+    if (!trans_con_handle) {
+        return APP_BLE_OPERATION_ERROR;
+    }
+
+    if (!att_get_ccc_config(handle + 1)) {
+         log_info("fail,no write ccc!!!,%04x\n", handle + 1);
+        return APP_BLE_NO_WRITE_CCC;
+    }
+
+    ret = ble_op_att_send_data(handle, data, len, handle_type);
+    if (ret == BLE_BUFFER_FULL) {
+        ret = APP_BLE_BUFF_FULL;
+    }
+
+    if (ret) {
+         log_info("app_send_fail:%d !!!!!!\n", ret);
+    }
+    return ret;
+}
 
 #endif
 

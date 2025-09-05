@@ -32,7 +32,7 @@
 #include "custom_cfg.h"
 #include "btstack/btstack_event.h"
 #include "le_gatt_common.h"
-#include "btstack_3th_protocol_user.h"
+
 
 #define LOG_TAG_CONST       GATT_SERVER
 #define LOG_TAG             "[GATT_SERVER]"
@@ -50,6 +50,8 @@
 /* #define log_info(x, ...)  y_printf("[GATT_SERVER]" x " ", ## __VA_ARGS__) */
 /* #define log_info_hexdump  put_buf */
 /* #endif */
+
+#define EXT_ADV_MODE_EN              0
 
 //----------------------------------------------------------------------------------------
 typedef struct {
@@ -263,23 +265,16 @@ void ble_gatt_server_passkey_input(u32 *key, u16 conn_handle)
 void ble_gatt_server_sm_packet(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
     sm_just_event_t *event = (void *)packet;
-    u32 tmp32, ret;
+    u32 tmp32;
     switch (packet_type) {
     case HCI_EVENT_PACKET:
         switch (hci_event_packet_get_type(packet)) {
         case SM_EVENT_JUST_WORKS_REQUEST:
             //发送接受配对命令sm_just_works_confirm,否则不发
             sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
+            log_info("%04x->Just Works Confirmed.\n", event->con_handle);
             __this->server_encrypt_process = LINK_ENCRYPTION_PAIR_JUST_WORKS;
-
-            ret = __gatt_server_event_callback_handler(GATT_COMM_EVENT_ENCRYPTION_REQUEST, &event->con_handle, 2, &__this->server_encrypt_process);
-            if (ret) {
-                log_info("first pair, %04x->Just decline.\n", event->con_handle);
-                sm_bonding_decline(sm_event_just_works_request_get_handle(packet));
-            } else {
-                log_info("first pair, %04x->Just Works Confirmed.\n", event->con_handle);
-                sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
-            }
+            __gatt_server_event_callback_handler(GATT_COMM_EVENT_ENCRYPTION_REQUEST, &event->con_handle, 2, &__this->server_encrypt_process);
             break;
 
         case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
@@ -303,35 +298,6 @@ void ble_gatt_server_sm_packet(uint8_t packet_type, uint16_t channel, uint8_t *p
             switch (event->data[0]) {
             case SM_EVENT_PAIR_SUB_RECONNECT_START:
                 __this->server_encrypt_process = LINK_ENCRYPTION_RECONNECT;
-                __gatt_server_event_callback_handler(GATT_COMM_EVENT_ENCRYPTION_REQUEST, &event->con_handle, 2, &__this->server_encrypt_process);
-                log_info("reconnect start\n");
-                break;
-
-            case SM_EVENT_PAIR_SUB_PIN_KEY_MISS:
-                log_error("pin or keymiss\n");
-                break;
-
-            case SM_EVENT_PAIR_SUB_PAIR_FAIL:
-                log_error("pair fail,reason=%02x,is_peer? %d\n", event->data[1], event->data[2]);
-                break;
-
-            case SM_EVENT_PAIR_SUB_PAIR_TIMEOUT:
-                log_error("pair timeout\n");
-                break;
-
-            case SM_EVENT_PAIR_SUB_ADD_LIST_SUCCESS:
-                log_info("first pair,add list success\n");
-                break;
-
-            case SM_EVENT_PAIR_SUB_ADD_LIST_FAILED:
-                log_error("add list fail\n");
-                break;
-
-            case SM_EVENT_PAIR_SUB_SEND_DISCONN:
-                log_error("local send disconnect,reason= %02x\n", event->data[1]);
-                break;
-
-            default:
                 break;
             }
             break;
@@ -465,11 +431,8 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
 #if (defined(BT_CONNECTION_VERIFY) && (0 == BT_CONNECTION_VERIFY))
                     JL_rcsp_auth_reset();
 #endif
-#if CONFIG_APP_DONGLE
-                    rcsp_dev_select_v1(RCSP_BLE);
-#else
+                    //rcsp_dev_select(RCSP_BLE);
                     rcsp_init();
-#endif
                 }
 #endif
                 ble_comm_dev_set_handle_state(tmp_val[0], GATT_ROLE_SERVER, BLE_ST_CONNECT);
@@ -491,12 +454,8 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
             break;
 
             case HCI_SUBEVENT_LE_DATA_LENGTH_CHANGE:
-                tmp_val[0] = little_endian_read_16(packet, 3);
-                log_info("conn_handle = %04x\n", tmp_val[0]);
+                log_info("conn_handle = %04x\n", little_endian_read_16(packet, 4));
                 log_info("APP HCI_SUBEVENT_LE_DATA_LENGTH_CHANGE\n");
-                log_info("TX_Octets:%d, Time:%d\n", little_endian_read_16(packet, 5), little_endian_read_16(packet, 7));
-                log_info("RX_Octets:%d, Time:%d\n", little_endian_read_16(packet, 9), little_endian_read_16(packet, 11));
-                __gatt_server_event_callback_handler(GATT_COMM_EVENT_CONNECTION_DATA_LENGTH_CHANGE, tmp_val, 2, packet);
                 break;
 
             case HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE:
@@ -504,7 +463,6 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
                 log_info("APP HCI_SUBEVENT_LE_PHY_UPDATE %s\n", hci_event_le_meta_get_phy_update_complete_status(packet) ? "Fail" : "Succ");
                 log_info("Tx PHY: %s\n", server_phy_result[hci_event_le_meta_get_phy_update_complete_tx_phy(packet)]);
                 log_info("Rx PHY: %s\n", server_phy_result[hci_event_le_meta_get_phy_update_complete_rx_phy(packet)]);
-                __gatt_server_event_callback_handler(GATT_COMM_EVENT_CONNECTION_PHY_UPDATE_COMPLETE, tmp_val, 2, packet);
                 break;
             }
             break;
@@ -521,9 +479,7 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
             if (__this->update_conn_handle == tmp_val[0]) {
                 __this->update_conn_handle = 0;
                 __this->rcsp_ctrl_en = 0;
-#if (0 == CONFIG_APP_DONGLE)
                 rcsp_exit();
-#endif
             }
 #endif
 
@@ -540,8 +496,8 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
 
         case ATT_EVENT_MTU_EXCHANGE_COMPLETE: {
             tmp_val[0] = little_endian_read_16(packet, 2);
-            tmp_val[1] = att_event_mtu_exchange_complete_get_MTU(packet);
-            log_info("handle= %02x, ATT_MTU= %u,payload= %u\n", tmp_val[0], tmp_val[1], tmp_val[1] - 3);
+            tmp_val[1] = att_event_mtu_exchange_complete_get_MTU(packet) - 3;
+            log_info("handle= %02x, ATT MTU = %u\n", tmp_val[0], tmp_val[1]);
             __gatt_server_event_callback_handler(GATT_COMM_EVENT_MTU_EXCHANGE_COMPLETE, tmp_val, 4, 0);
         }
         break;
@@ -573,10 +529,7 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
         case HCI_EVENT_ENCRYPTION_CHANGE: {
             tmp_val[0] = little_endian_read_16(packet, 3);
             tmp_val[1] = packet[2] | (__this->server_encrypt_process << 8);
-            log_info("HCI_EVENT_ENCRYPTION_CHANGE= %d, %04x\n", packet[2], tmp_val[0]);
-            if (packet[2]) {
-                log_info("Encryption fail!!!,%d,%04x\n", packet[2], tmp_val[0]);
-            }
+            log_info("HCI_EVENT_ENCRYPTION_CHANGE= %d\n", packet[2]);
             __gatt_server_event_callback_handler(GATT_COMM_EVENT_ENCRYPTION_CHANGE, tmp_val, 4, 0);
         }
         break;
@@ -586,7 +539,7 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
 }
 
 
-#if EXT_ADV_MODE_EN ||PERIODIC_ADV_MODE_EN
+#if EXT_ADV_MODE_EN
 
 #define EXT_ADV_NAME                    'J', 'L', '_', 'E', 'X', 'T', '_', 'A', 'D', 'V'
 /* #define EXT_ADV_NAME                    "JL_EXT_ADV" */
@@ -595,22 +548,17 @@ void ble_gatt_server_cbk_packet_handler(uint8_t packet_type, uint16_t channel, u
     0x03, 0x02, 0xF0, 0xFF, \
     BYTE_LEN(EXT_ADV_NAME) + 1, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, EXT_ADV_NAME
 
-const le_set_ext_adv_param_t ext_adv_param = {
+const struct ext_advertising_param ext_adv_param = {
     .Advertising_Handle = 0,
-#if PERIODIC_ADV_MODE_EN
-    .Advertising_Event_Properties = 0,
-#else
     .Advertising_Event_Properties = 1,
-#endif /*PERIODIC_ADV_MODE_EN*/
     .Primary_Advertising_Interval_Min = {30, 0, 0},
     .Primary_Advertising_Interval_Max = {30, 0, 0},
     .Primary_Advertising_Channel_Map = 7,
     .Primary_Advertising_PHY = ADV_SET_1M_PHY,
     .Secondary_Advertising_PHY = ADV_SET_1M_PHY,
-    .Advertising_SID  = CUR_ADVERTISING_SID,
 };
 
-const le_set_ext_adv_data_t ext_adv_data = {
+const struct ext_advertising_data ext_adv_data = {
     .Advertising_Handle = 0,
     .Operation = 3,
     .Fragment_Preference = 0,
@@ -618,7 +566,7 @@ const le_set_ext_adv_data_t ext_adv_data = {
     .Advertising_Data = EXT_ADV_DATA,
 };
 
-const le_set_ext_adv_en_t ext_adv_enable = {
+const struct ext_advertising_enable ext_adv_enable = {
     .Enable = 1,
     .Number_of_Sets = 1,
     .Advertising_Handle = 0,
@@ -626,7 +574,7 @@ const le_set_ext_adv_en_t ext_adv_enable = {
     .Max_Extended_Advertising_Events = 0,
 };
 
-const le_set_ext_adv_en_t ext_adv_disable = {
+const struct ext_advertising_enable ext_adv_disable = {
     .Enable = 0,
     .Number_of_Sets = 1,
     .Advertising_Handle = 0,
@@ -636,40 +584,6 @@ const le_set_ext_adv_en_t ext_adv_disable = {
 
 #endif /* EXT_ADV_MODE_EN */
 
-#if PERIODIC_ADV_MODE_EN
-
-#if CHAIN_DATA_TEST_EN
-#define PERIODIC_ADV_DATA                    \
-        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
-#else
-#define PERIODIC_ADV_DATA               EXT_ADV_DATA
-#endif /* CHAIN_DATA_TEST_EN */
-
-static const struct periodic_advertising_param periodic_adv_param = {
-    .Advertising_Handle = CUR_ADV_HANDLE,
-    .Periodic_Advertising_Interval_Min = 50,
-    .Periodic_Advertising_Interval_Max = 50,
-    .Periodic_Advertising_Properties = 0,
-};
-
-static const struct periodic_advertising_data periodic_adv_data = {
-    .Advertising_Handle = CUR_ADV_HANDLE,
-    .Operation = 3,
-    .Advertising_Data_Length = BYTE_LEN(PERIODIC_ADV_DATA),
-    .Advertising_Data = PERIODIC_ADV_DATA,
-};
-
-static const struct periodic_advertising_enable periodic_adv_enable = {
-    .Enable = 1,
-    .Advertising_Handle = CUR_ADV_HANDLE,
-};
-
-static const struct periodic_advertising_enable periodic_adv_disable = {
-    .Enable = 0,
-    .Advertising_Handle = CUR_ADV_HANDLE,
-};
-
-#endif 	/*PERIODIC_ADV_MODE_EN*/
 /*************************************************************************************************/
 /*!
  *  \brief      检查是否自动开广播
@@ -711,7 +625,7 @@ static bool __gatt_server_just_new_dev_adv(void)
 #endif
 
     if (state != BLE_ST_IDLE && state != BLE_ST_DISCONN && state != BLE_ST_INIT_OK) {
-        log_info("dev_doing,%02x\n", state);
+        log_info("dev_doing\n");
         return false;
     }
 
@@ -776,21 +690,11 @@ int ble_gatt_server_adv_enable(u32 en)
 #if EXT_ADV_MODE_EN
     if (en) {
         ble_op_set_ext_adv_param(&ext_adv_param, sizeof(ext_adv_param));
+        log_info_hexdump(&ext_adv_data, sizeof(ext_adv_data));
         ble_op_set_ext_adv_data(&ext_adv_data, sizeof(ext_adv_data));
         ble_op_set_ext_adv_enable(&ext_adv_enable, sizeof(ext_adv_enable));
     } else {
         ble_op_set_ext_adv_enable(&ext_adv_disable, sizeof(ext_adv_disable));
-    }
-#elif PERIODIC_ADV_MODE_EN
-    if (en) {
-        ble_op_set_ext_adv_param(&ext_adv_param, sizeof(ext_adv_param));
-        ble_user_cmd_prepare(BLE_CMD_PERIODIC_ADV_PARAM, 2, &periodic_adv_param, sizeof(periodic_adv_param));
-        ble_user_cmd_prepare(BLE_CMD_PERIODIC_ADV_DATA, 2, &periodic_adv_data, sizeof(periodic_adv_data));
-        ble_user_cmd_prepare(BLE_CMD_PERIODIC_ADV_ENABLE, 2, &periodic_adv_enable, sizeof(periodic_adv_enable));
-        ble_op_set_ext_adv_enable(&ext_adv_enable, sizeof(ext_adv_enable));
-    } else {
-        ble_op_set_ext_adv_enable(&ext_adv_disable, sizeof(ext_adv_disable));
-        ble_user_cmd_prepare(BLE_CMD_PERIODIC_ADV_ENABLE, 2, &periodic_adv_disable, sizeof(periodic_adv_disable));
     }
 #else
     if (en) {
@@ -923,9 +827,9 @@ int ble_gatt_server_connetion_update_request(u16 conn_handle, const struct conn_
  *  \note       注意多机应用是，此接口会主动触发是否开新设备广播功能
  */
 /*************************************************************************************************/
-int ble_gatt_server_characteristic_ccc_set(u16 conn_handle, u16 att_ccc_handle, u16 ccc_config)
+int ble_gatt_server_characteristic_ccc_set(u16 conn_handle, u16 att_handle, u16 ccc_config)
 {
-    multi_att_set_ccc_config(conn_handle, att_ccc_handle, ccc_config);
+    multi_att_set_ccc_config(conn_handle, att_handle, ccc_config);
     if (BLE_ST_NOTIFY_IDICATE != ble_comm_dev_get_handle_state(conn_handle, GATT_ROLE_SERVER)) {
         ble_comm_dev_set_handle_state(conn_handle, GATT_ROLE_SERVER, BLE_ST_NOTIFY_IDICATE);
         __gatt_server_set_work_state(conn_handle, BLE_ST_NOTIFY_IDICATE, 1);
@@ -952,9 +856,9 @@ int ble_gatt_server_characteristic_ccc_set(u16 conn_handle, u16 att_ccc_handle, 
  *  \note
  */
 /*************************************************************************************************/
-u16 ble_gatt_server_characteristic_ccc_get(u16 conn_handle, u16 att_ccc_handle)
+u16 ble_gatt_server_characteristic_ccc_get(u16 conn_handle, u16 att_handle)
 {
-    return multi_att_get_ccc_config(conn_handle, att_ccc_handle);
+    return multi_att_get_ccc_config(conn_handle, att_handle);
 }
 
 /*************************************************************************************************/
@@ -1082,18 +986,10 @@ void ble_gatt_server_exit(void)
 /*************************************************************************************************/
 u8 *ble_get_scan_rsp_ptr(u16 *len)
 {
-    if (__this && __this->adv_config) {
-        if (len) {
-            *len = __this->adv_config->rsp_data_len;
-        }
-        return __this->adv_config->rsp_data;
-    } else {
-        if (len) {
-            *len = 0;
-        }
-        log_info("error: %s\n", __FUNCTION__);
-        return 0;
+    if (len) {
+        *len = __this->adv_config->rsp_data_len;
     }
+    return __this->adv_config->rsp_data;
 }
 
 /*************************************************************************************************/
@@ -1109,18 +1005,10 @@ u8 *ble_get_scan_rsp_ptr(u16 *len)
 /*************************************************************************************************/
 u8 *ble_get_adv_data_ptr(u16 *len)
 {
-    if (__this && __this->adv_config) {
-        if (len) {
-            *len = __this->adv_config->adv_data_len;
-        }
-        return __this->adv_config->adv_data;
-    } else {
-        if (len) {
-            *len = 0;
-        }
-        log_info("error: %s\n", __FUNCTION__);
-        return 0;
+    if (len) {
+        *len = __this->adv_config->adv_data_len;
     }
+    return __this->adv_config->adv_data;
 }
 
 /*************************************************************************************************/
@@ -1136,14 +1024,8 @@ u8 *ble_get_adv_data_ptr(u16 *len)
 /*************************************************************************************************/
 u8 *ble_get_gatt_profile_data(u16 *len)
 {
-    if (__this && __this->adv_config) {
-        *len = __this->profile_data_len;
-        return __this->profile_data;
-    } else {
-        *len = 0;
-        log_info("error: %s\n", __FUNCTION__);
-        return 0;
-    }
+    *len = __this->profile_data_len;
+    return __this->profile_data;
 }
 
 /*************************************************************************************************/

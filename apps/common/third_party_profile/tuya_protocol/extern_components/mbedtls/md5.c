@@ -23,9 +23,6 @@
  *
  *  http://www.ietf.org/rfc/rfc1321.txt
  */
-#include "app_config.h"
-
-#if (CONFIG_APP_TUYA)
 
 #define MBEDTLS_MD5_C
 
@@ -505,4 +502,3 @@ fail:
 #endif /* MBEDTLS_SELF_TEST */
 
 #endif /* MBEDTLS_MD5_C */
-#endif /* CONFIG_APP_TUYA */

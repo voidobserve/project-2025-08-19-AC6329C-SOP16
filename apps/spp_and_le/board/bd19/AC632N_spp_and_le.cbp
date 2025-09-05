@@ -2,7 +2,7 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="XWD-RGBW(12V)" />
+		<Option title="sm-rgb" />
 		<Option compiler="q32s_lto_compiler" />
 		<Build>
 			<Target title="Release">
@@ -36,8 +36,7 @@
 					<Add option="-DSINE_MAKE_IN_MASK" />
 					<Add option="-DCONFIG_MMU_ENABLE" />
 					<Add option="-DCONFIG_AEC_M=256" />
-					<Add option="-DCONFIG_AUDIO_ONCHIP" />
-					<Add option="-DCONFIG_MEDIA_NEW_ENABLE" />
+					<Add option="-DCONFIG_MEDIA_ORIGIN_ENABLE" />
 					<Add option="-D__GCC_Q32S__" />
 					<Add option="-DCONFIG_NEW_ECC_ENABLE" />
 					<Add option="-DCONFIG_CRYPTO_TOOLBOX_OSIZE_IN_MASKROM" />
@@ -47,19 +46,16 @@
 					<Add option="-DCONFIG_EVENT_KEY_MAP_ENABLE=0" />
 					<Add option="-DTIMER_POOL_NUM_CONFIG=10" />
 					<Add option="-DAPP_ASYNC_POOL_NUM_CONFIG=0" />
-					<Add option="-DSDK_VERSION_CFG_DEFINE=0x230003" />
-					<Add option="-DSDK_VERSION_DATE_DEFINE=20240331" />
 					<Add option="-DVFS_ENABLE=1" />
 					<Add option="-DUSE_SDFILE_NEW=1" />
 					<Add option="-DVFS_FILE_POOL_NUM_CONFIG=0" />
 					<Add option="-DSDFILE_VERSION=0x020000" />
 					<Add option="-DVM_MAX_SIZE_CONFIG=16*1024" />
-					<Add option="-DVM_ITEM_MAX_NUM=256" />
+					<Add option="-DVM_ITEM_MAX_NUM=128" />
 					<Add option="-DCONFIG_TWS_ENABLE" />
 					<Add option="-DCONFIG_SPP_AND_LE_CASE_ENABLE" />
 					<Add option="-DCONFIG_TRANSFER_ENABLE" />
 					<Add option="-DCONFIG_LITE_AEC_ENABLE=0" />
-					<Add option="-DCONFIG_LITE_AUDIO" />
 					<Add option="-DCONFIG_LMP_RESET_ENABLE" />
 					<Add option="-DCONFIG_LMP_REFRESH_ENCRYPTION_KEY_ENABLE" />
 					<Add option="-DCONFIG_LINK_DISTURB_SCAN_ENABLE=0" />
@@ -69,6 +65,7 @@
 					<Add option="-DCONFIG_ITEM_FORMAT_VM" />
 					<Add option="-DTCFG_APP_BT_EN=1" />
 					<Add option="-DUSB_PC_NO_APP_MODE" />
+					<Add option="-D__LD__" />
 					<Add directory="../../../../include_lib" />
 					<Add directory="../../../../include_lib/driver" />
 					<Add directory="../../../../include_lib/driver/device" />
@@ -78,17 +75,17 @@
 					<Add directory="../../../../include_lib/system/device" />
 					<Add directory="../../../../include_lib/system/fs" />
 					<Add directory="../../../../include_lib/system/ui" />
-					<Add directory="../../../../include_lib/system/math/cpu/bd19" />
 					<Add directory="../../../../include_lib/btctrler" />
 					<Add directory="../../../../include_lib/btctrler/port/bd19" />
 					<Add directory="../../../../include_lib/update" />
 					<Add directory="../../../../include_lib/agreement" />
 					<Add directory="../../../../include_lib/btstack/third_party/common" />
 					<Add directory="../../../../include_lib/btstack/third_party/rcsp" />
-					<Add directory="../../../../include_lib/media/media_new" />
-					<Add directory="../../../../include_lib/media/media_new/media" />
-					<Add directory="../../../../include_lib/media/media_new/media/cpu/bd19" />
-					<Add directory="../../../../include_lib/media/media_new/media/cpu/bd19/asm" />
+					<Add directory="../../../../include_lib/media/media_origin" />
+					<Add directory="../../../../include_lib/media/media_origin/media" />
+					<Add directory="../../../../include_lib/media/media_origin/media/cpu/bd19" />
+					<Add directory="../../../../include_lib/media/media_origin/media/cpu/bd19/asm" />
+					<Add directory="../../../../include_lib/media/media_origin/media/aec" />
 					<Add directory="../../../../apps/spp_and_le/include" />
 					<Add directory="../../../../apps/spp_and_le/board/bd19" />
 					<Add directory="../../../../apps/common" />
@@ -98,7 +95,6 @@
 					<Add directory="../../../../cpu/bd19" />
 					<Add directory="../../../../apps/common/third_party_profile/jieli" />
 					<Add directory="../../../../apps/common/third_party_profile/jieli/JL_rcsp" />
-					<Add directory="../../../../apps/common/third_party_profile/jieli/online_db" />
 					<Add directory="../../../../apps/common/third_party_profile/common" />
 					<Add directory="../../../../include_lib/ai_stack/JL_rcsp" />
 					<Add directory="../../../../include_lib/btstack" />
@@ -118,28 +114,18 @@
 					<Add directory="../../../../apps/common/third_party_profile/tuya_protocol/sdk/include" />
 					<Add directory="../../../../apps/common/third_party_profile/tuya_protocol/sdk/lib" />
 					<Add directory="../../../../apps/spp_and_le/examples/tuya" />
-					<Add directory="../../../../apps/common/third_party_profile/hilink_protocol" />
-					<Add directory="../../../../apps/common/third_party_profile/hilink_protocol/mbedtls_protocol" />
-					<Add directory="../../../../apps/common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls" />
-					<Add directory="../../../../apps/common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/configs" />
-					<Add directory="../../../../apps/common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/psa" />
-					<Add directory="../../../../apps/spp_and_le/examples/hilink" />
-					<Add directory="../../../../cpu/bd19/audio_encode" />
-					<Add directory="../../../../cpu/bd19/audio_decode" />
-					<Add directory="../../../../apps/common/audio" />
 					<Add directory="../../../../apps/common/device/usb" />
 					<Add directory="../../../../apps/common/device/usb/device" />
 					<Add directory="../../../../apps/common/device/usb/host" />
-					<Add directory="../../../user_app/rf24g_key" />
-					<Add directory="../../examples/multi_conn" />
-					<Add directory="../../../common/third_party_profile/jieli/gatt_common" />
-					<Add directory="../../../user_app/ws2812-fx-lib/Adafruit_NeoPixel_C" />
 					<Add directory="../../../user_app/ws2812-fx-lib/WS2812FX_C" />
-					<Add directory="../../../user_app/hardware" />
-					<Add directory="../../../user_app/one_wire" />
-					<Add directory="../../../user_app/protocol" />
+					<Add directory="../../../user_app/ws2812-fx-lib/Adafruit_NeoPixel_C" />
 					<Add directory="../../../user_app/led_strip" />
-					<Add directory="../../../user_app/rf433_key" />
+					<Add directory="../../../user_app/protocol" />
+					<Add directory="../../examples/trans_data" />
+					<Add directory="../../../user_app/save_flash" />
+					<Add directory="../../../user_app/rf433" />
+					<Add directory="../../../user_app/one_wire" />
+					<Add directory="../../../user_app/rf24g" />
 				</Compiler>
 				<Linker>
 					<Add option="--plugin-opt=-inline-threshold=5" />
@@ -157,18 +143,7 @@
 					<Add option="../../../../cpu/bd19/liba/btctrler.a" />
 					<Add option="../../../../cpu/bd19/liba/agreement.a" />
 					<Add option="../../../../cpu/bd19/liba/rcsp_stack.a" />
-					<Add option="../../../../cpu/bd19/liba/fmna_stack.a" />
-					<Add option="../../../../cpu/bd19/liba/fmna_auth.a" />
-					<Add option="../../../../cpu/bd19/liba/MotionDetection.a" />
 					<Add option="../../../../apps/common/third_party_profile/tuya_protocol/sdk/lib/lib_tuya_v200_Q32S.a" />
-					<Add option="../../../../cpu/bd19/liba/media.a" />
-					<Add option="../../../../cpu/bd19/liba/lc3_codec_lib.a" />
-					<Add option="../../../../cpu/bd19/liba/usbc_codec_lib.a" />
-					<Add option="../../../../cpu/bd19/liba/lib_adpcm_ima_code.a" />
-					<Add option="../../../../cpu/bd19/liba/wav_dec_lib.a" />
-					<Add option="../../../../cpu/bd19/liba/wtgv2_dec_lib.a" />
-					<Add option="../../../../cpu/bd19/liba/opus_enc_lib.a" />
-					<Add option="../../../../cpu/bd19/liba/msbc_codec_lib.a" />
 					<Add option="../../../../cpu/bd19/liba/update.a" />
 					<Add option="--end-group" />
 					<Add option="-T../../../../cpu/bd19/sdk.ld" />
@@ -176,37 +151,17 @@
 					<Add library="C:/JL/pi32/q32s-lib/libm.a" />
 				</Linker>
 				<ExtraCommands>
-					<Add before="$compiler $options $includes -D__LD__ -E -P ..\..\..\..\cpu\bd19\sdk_used_list.c -o ..\..\..\..\cpu\bd19\sdk_used_list.used" />
-					<Add before="$compiler $options $includes -D__LD__ -E -P ..\..\..\..\cpu\bd19\sdk_ld.c -o ..\..\..\..\cpu\bd19\sdk.ld" />
-					<Add before="$compiler $options $includes -D__LD__ -E -P ..\..\..\..\cpu\bd19\tools\download.c -o ..\..\..\..\cpu\bd19\tools\download.bat" />
+					<Add before="$compiler $options $includes -E -P ..\..\..\..\cpu\bd19\sdk_used_list.c -o ..\..\..\..\cpu\bd19\sdk_used_list.used" />
+					<Add before="$compiler $options $includes -E -P ..\..\..\..\cpu\bd19\sdk_ld.c -o ..\..\..\..\cpu\bd19\sdk.ld" />
+					<Add before="$compiler $options $includes -E -P ..\..\..\..\cpu\bd19\tools\download.c -o ..\..\..\..\cpu\bd19\tools\download.bat" />
 					<Add before="..\..\..\..\tools\utils\fixbat.exe ..\..\..\..\cpu\bd19\tools\download.bat" />
-					<Add before="$compiler $options $includes -D__LD__ -E -P ..\..\..\..\cpu\bd19\tools\isd_config_rule.c -o ..\..\..\..\cpu\bd19\tools\isd_config.ini" />
+					<Add before="$compiler $options $includes -E -P ..\..\..\..\cpu\bd19\tools\isd_config_rule.c -o ..\..\..\..\cpu\bd19\tools\isd_config.ini" />
 					<Add after="..\..\..\..\cpu\bd19\tools\download.bat sdk" />
 					<Mode after="always" />
 				</ExtraCommands>
 			</Target>
 		</Build>
-		<Unit filename="../../../../cpu/bd19/Resample_api.h" />
 		<Unit filename="../../../../cpu/bd19/adc_api.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/audio_codec_clock.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/audio_codec_clock.h" />
-		<Unit filename="../../../../cpu/bd19/audio_config.h" />
-		<Unit filename="../../../../cpu/bd19/audio_decode/audio_decode.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/audio_decode/audio_decode.h" />
-		<Unit filename="../../../../cpu/bd19/audio_encode/audio_encode.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/audio_encode/audio_encode.h" />
-		<Unit filename="../../../../cpu/bd19/audio_pwm.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/audio_resample_demo.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../../cpu/bd19/charge.c">
@@ -248,13 +203,6 @@
 		<Unit filename="../../../../cpu/bd19/spi.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../../cpu/bd19/spi_test.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/tone_player.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../../cpu/bd19/tone_player_api.h" />
 		<Unit filename="../../../../cpu/bd19/uart_dev.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -284,13 +232,11 @@
 		<Unit filename="../../../../include_lib/btstack/le/le_common_define.h" />
 		<Unit filename="../../../../include_lib/btstack/le/le_user.h" />
 		<Unit filename="../../../../include_lib/btstack/le/sm.h" />
-		<Unit filename="../../../../include_lib/btstack/third_party/app_protocol_event.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/common/ble_config.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/common/ble_user.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/common/btstack_3th_protocol_user.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/common/spp_config.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/common/spp_user.h" />
-		<Unit filename="../../../../include_lib/btstack/third_party/fmna/fmna_api.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/rcsp/JL_rcsp_api.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/rcsp/JL_rcsp_packet.h" />
 		<Unit filename="../../../../include_lib/btstack/third_party/rcsp/JL_rcsp_protocol.h" />
@@ -337,7 +283,6 @@
 		<Unit filename="../../../../include_lib/driver/device/spiflash.h" />
 		<Unit filename="../../../../include_lib/driver/device/uart.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/ch9.h" />
-		<Unit filename="../../../../include_lib/driver/device/usb/device/custom_hid.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/device/descriptor.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/device/hid.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/device/msd.h" />
@@ -347,26 +292,6 @@
 		<Unit filename="../../../../include_lib/driver/device/usb/otg.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/scsi.h" />
 		<Unit filename="../../../../include_lib/driver/device/usb/usb_phy.h" />
-		<Unit filename="../../../../include_lib/media/audio_def.h" />
-		<Unit filename="../../../../include_lib/media/audio_stream.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/application/eq_func_define.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/audio_base.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/audio_decoder.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/audio_encoder.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/automute.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/anc.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/audio_adc.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/audio_linein.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/audio_src.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/audio_src_sync.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/audio_sync_resample.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/cpu_includes.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/dac.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/asm/hw_eq.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/cpu/bd19/commproc.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/includes.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/mixer.h" />
-		<Unit filename="../../../../include_lib/media/media_new/media/sbc_enc.h" />
 		<Unit filename="../../../../include_lib/system/app_core.h" />
 		<Unit filename="../../../../include_lib/system/app_msg.h" />
 		<Unit filename="../../../../include_lib/system/bank_switch.h" />
@@ -441,10 +366,6 @@
 		<Unit filename="../../../../include_lib/update/uart_update.h" />
 		<Unit filename="../../../../include_lib/update/update.h" />
 		<Unit filename="../../../../include_lib/update/update_loader_download.h" />
-		<Unit filename="../../../common/audio/audio_digital_vol.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/audio/audio_digital_vol.h" />
 		<Unit filename="../../../common/bt_common/bt_test_api.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -455,37 +376,10 @@
 		<Unit filename="../../../common/debug/debug.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/Motion_api.h" />
-		<Unit filename="../../../common/device/gSensor/fmy/SC7A20_E.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/SC7A20_TR.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/SC7A20_TR.h" />
-		<Unit filename="../../../common/device/gSensor/fmy/gSensor_manage.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/gSensor_manage.h" />
-		<Unit filename="../../../common/device/gSensor/fmy/gsensor_api.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/gsensor_api.h" />
-		<Unit filename="../../../common/device/gSensor/fmy/msa310.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/msa310.h" />
-		<Unit filename="../../../common/device/gSensor/fmy/msa310_function.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/gSensor/fmy/msa310_function.h" />
 		<Unit filename="../../../common/device/key/adkey.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../common/device/key/iokey.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/device/key/irkey.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../common/device/key/key_driver.c">
@@ -502,9 +396,6 @@
 		</Unit>
 		<Unit filename="../../../common/device/usb/device/cdc.h" />
 		<Unit filename="../../../common/device/usb/device/cdc_defs.h" />
-		<Unit filename="../../../common/device/usb/device/custom_hid.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../../../common/device/usb/device/descriptor.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -578,9 +469,6 @@
 		<Unit filename="../../../common/include/norflash.h" />
 		<Unit filename="../../../common/include/standard_hid.h" />
 		<Unit filename="../../../common/include/update_tws.h" />
-		<Unit filename="../../../common/temp_trim/dtemp_pll_trim.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../../../common/third_party_profile/Tecent_LL/include/ble_qiot_common.h" />
 		<Unit filename="../../../common/third_party_profile/Tecent_LL/include/ble_qiot_config.h" />
 		<Unit filename="../../../common/third_party_profile/Tecent_LL/include/ble_qiot_crc.h" />
@@ -646,88 +534,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../common/third_party_profile/common/custom_cfg.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_ota.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_ota.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_protocol.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_protocol.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_task.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/hilink_task.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/aes.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/arc4.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/bignum.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/blowfish.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/ccm.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/chacha20.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/chachapoly.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/cipher.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/cipher_wrap.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/des.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/gcm.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/cipher.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/common.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/config.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/gcm.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/md.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls/platform_util.h" />
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/mbedtls_main.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/md.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/md5.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/pkcs5.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/poly1305.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/ripemd160.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/sha1.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/sha256.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/hilink_protocol/mbedtls_protocol/sha512.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/jieli/JL_rcsp/bt_trans_data/rcsp_hid_inter.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/jieli/JL_rcsp/bt_trans_data/rcsp_hid_inter.h" />
 		<Unit filename="../../../common/third_party_profile/jieli/JL_rcsp/rcsp_bluetooth.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -750,16 +556,11 @@
 		<Unit filename="../../../common/third_party_profile/jieli/gatt_common/le_gatt_server.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../../../common/third_party_profile/jieli/le_at_char_client.h" />
+		<Unit filename="../../../common/third_party_profile/jieli/le_at_char_com.h" />
 		<Unit filename="../../../common/third_party_profile/jieli/le_client_demo.h" />
 		<Unit filename="../../../common/third_party_profile/jieli/le_common.h" />
-		<Unit filename="../../../common/third_party_profile/jieli/online_db/online_db_deal.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/jieli/online_db/online_db_deal.h" />
-		<Unit filename="../../../common/third_party_profile/jieli/online_db/spp_online_db.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../common/third_party_profile/jieli/online_db/spp_online_db.h" />
+		<Unit filename="../../../common/third_party_profile/jieli/multi_demo/le_multi_common.h" />
 		<Unit filename="../../../common/third_party_profile/tuya_protocol/app/demo/tuya_ble_app_demo.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -894,10 +695,6 @@
 		<Unit filename="../../../common/update/update.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../user_app/hardware/hardware.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../user_app/hardware/hardware.h" />
 		<Unit filename="../../../user_app/led_strip/led_strand_effect.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -910,13 +707,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../user_app/led_strip/led_strip_sys.h" />
-		<Unit filename="../../../user_app/led_strip/led_strip_voice.c">
+		<Unit filename="../../../user_app/led_strip/rgb_to_rgbw.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../user_app/led_strip/paint_tool.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../../user_app/led_strip/paint_tool.h" />
+		<Unit filename="../../../user_app/led_strip/rgb_to_rgbw.h" />
 		<Unit filename="../../../user_app/one_wire/one_wire.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -925,14 +719,22 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../user_app/protocol/dp_data_tran.h" />
-		<Unit filename="../../../user_app/rf24g_key/rf24g_app.c">
+		<Unit filename="../../../user_app/rf24g/rf24g.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../user_app/rf24g_key/rf24g_app.h" />
-		<Unit filename="../../../user_app/rf433_key/rf433_app.c">
+		<Unit filename="../../../user_app/rf24g/rf24g.h" />
+		<Unit filename="../../../user_app/rf24g/rf24g_app.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../../user_app/rf433_key/rf433_app.h" />
+		<Unit filename="../../../user_app/rf24g/rf24g_app.h" />
+		<Unit filename="../../../user_app/rf433/rf433.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../user_app/rf433/rf433.h" />
+		<Unit filename="../../../user_app/rf433/rf433_app.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../user_app/rf433/rf433_app.h" />
 		<Unit filename="../../../user_app/save_flash/save_flash.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -943,8 +745,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../../user_app/ws2812-fx-lib/WS2812FX_C/WS2812FX.H" />
-		<Unit filename="../../../user_app/ws2812-fx-lib/WS2812FX_C/binary.h" />
 		<Unit filename="../../../user_app/ws2812-fx-lib/WS2812FX_C/ws2812_bsp.h" />
+		<Unit filename="../../../user_app/ws2812-fx-lib/WS2812FX_C/ws2812_drive.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../../../user_app/ws2812-fx-lib/WS2812FX_C/ws2812fx2.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -966,9 +770,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../config/lib_driver_config.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../config/lib_media_config.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../config/lib_profile_config.c">
@@ -1000,7 +801,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../examples/at_char_com/ble_at_char_com.h" />
-		<Unit filename="../../examples/at_char_com/ble_at_char_profile.h" />
 		<Unit filename="../../examples/at_com/app_at_com.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -1037,10 +837,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../examples/ble_central/ble_central.h" />
-		<Unit filename="../../examples/ble_central/ble_central_server.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/ble_central/ble_central_server.h" />
 		<Unit filename="../../examples/conn_24g/app_conn_24g.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -1061,44 +857,12 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../examples/dongle/edr_hid_user.h" />
-		<Unit filename="../../examples/dongle/ota_dg_central.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../../examples/dongle/usb_hid_devices.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../examples/dongle/usb_second_hid_devices.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../../examples/findmy/app_fmy.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/findmy/ble_fmy.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/findmy/ble_fmy.h" />
-		<Unit filename="../../examples/findmy/ble_fmy_cfg.h" />
-		<Unit filename="../../examples/findmy/ble_fmy_fmna.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/findmy/ble_fmy_fmna.h" />
-		<Unit filename="../../examples/findmy/ble_fmy_ota.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/findmy/ble_fmy_ota.h" />
-		<Unit filename="../../examples/findmy/ble_fmy_profile.h" />
-		<Unit filename="../../examples/findmy/ble_fmy_sensor_uart.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/findmy/ble_fmy_sensor_uart.h" />
-		<Unit filename="../../examples/hilink/app_hilink.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/hilink/hilink_demo.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../examples/hilink/hilink_demo.h" />
-		<Unit filename="../../examples/hilink/hilink_profile.h" />
 		<Unit filename="../../examples/idle/app_idle.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -1136,13 +900,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../examples/trans_data/ble_trans.h" />
-		<Unit filename="../../examples/trans_data/ble_trans_ios_services.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../../examples/trans_data/ble_trans_profile.h" />
-		<Unit filename="../../examples/trans_data/ble_trans_search.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../../examples/tuya/app_tuya.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -1151,7 +909,6 @@
 		</Unit>
 		<Unit filename="../../examples/tuya/tuya_demo.h" />
 		<Unit filename="../../examples/tuya/tuya_profile.h" />
-		<Unit filename="../../include/aec_user.h" />
 		<Unit filename="../../include/app_action.h" />
 		<Unit filename="../../include/app_charge.h" />
 		<Unit filename="../../include/app_chargestore.h" />
@@ -1167,7 +924,6 @@
 		<Unit filename="../../include/lib_profile_cfg.h" />
 		<Unit filename="../../include/rtc_alarm.h" />
 		<Unit filename="../../include/spp_trans.h" />
-		<Unit filename="../../include/tone_player.h" />
 		<Unit filename="../../include/user_cfg_id.h" />
 		<Unit filename="../../modules/bt/app_comm_ble.c">
 			<Option compilerVar="CC" />
@@ -1215,11 +971,6 @@
 		</Unit>
 		<Unit filename="board_ac6323a_demo_cfg.h" />
 		<Unit filename="board_ac6323a_demo_global_build_cfg.h" />
-		<Unit filename="board_ac6323a_fmy.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="board_ac6323a_fmy_cfg.h" />
-		<Unit filename="board_ac6323a_fmy_global_build_cfg.h" />
 		<Unit filename="board_ac6328a_demo.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -1256,10 +1007,6 @@
 		<Unit filename="board_ac632n_demo_cfg.h" />
 		<Unit filename="board_ac632n_demo_global_build_cfg.h" />
 		<Unit filename="board_config.h" />
-		<Extensions>
-			<code_completion />
-			<envvars />
-			<debugger />
-		</Extensions>
+		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

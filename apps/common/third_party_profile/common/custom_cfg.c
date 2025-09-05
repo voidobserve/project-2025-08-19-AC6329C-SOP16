@@ -198,12 +198,6 @@ typedef struct _sdk_type_cfg_t {
     u8 data;
 } sdk_type_cfg_t;
 
-typedef struct _hid_param_cfg_t {
-    u16 crc;
-    u16 len;
-    u8 data[32];
-} hid_param_cfg_t;
-
 typedef struct _ex_cfg_t {
     adv_data_cfg_t adv_data_cfg;
     adv_data_cfg_t scan_rsp_cfg;
@@ -228,7 +222,6 @@ typedef struct _ex_cfg_t {
     pid_vid_cfg_t       pid_vid_cfg;
     md5_cfg_t           md5_cfg;
     sdk_type_cfg_t      sdk_type_cfg;
-    hid_param_cfg_t		hid_param_cfg;
 } ex_cfg_t;
 
 typedef union _ex_cfg_item_u {
@@ -256,7 +249,6 @@ typedef union _ex_cfg_item_u {
     pid_vid_cfg_t       pid_vid_cfg;
     md5_cfg_t           md5_cfg;
     sdk_type_cfg_t      sdk_type_cfg;
-    hid_param_cfg_t		hid_param_cfg;
 } ex_cfg_item_u;
 
 typedef struct _cfg_item_head_t {
@@ -378,7 +370,6 @@ typedef enum _FLASH_ERASER {
     CHIP_ERASER,
     BLOCK_ERASER,
     SECTOR_ERASER,
-    PAGE_ERASER,
 } FLASH_ERASER;
 #if (USE_VM_API_SEL == VM_API_AC692X)
 #include "flash_api.h"
@@ -610,11 +601,6 @@ static const cfg_item_attr_t cfg_item_attr_tab[] = {
         MEMBER_SIZE_OF_STRUCT(ex_cfg_t, sdk_type_cfg),
         MEMBER_SIZE_OF_STRUCT(ex_cfg_t, sdk_type_cfg.data),
         MEMBER_OFFSET_OF_STRUCT(ex_cfg_t, sdk_type_cfg),
-    },
-    [CFG_ITEM_HID_PARAM] = {
-        MEMBER_SIZE_OF_STRUCT(ex_cfg_t, hid_param_cfg),
-        MEMBER_SIZE_OF_STRUCT(ex_cfg_t, hid_param_cfg.data),
-        MEMBER_OFFSET_OF_STRUCT(ex_cfg_t, hid_param_cfg),
     }
 };
 
@@ -1133,16 +1119,10 @@ static u32 ex_cfg_fill_content(ex_cfg_t *user_ex_cfg, u8 *write_flag)
 
 
     //CFG_ITEM_BLE_NAME
-#if CONFIG_APP_DONGLE
-    host_name = "USB_Update_Dongle";
-    host_name_len = strlen(host_name);
-#else
     host_name = bt_get_local_name();
     host_name_len = strlen(bt_get_local_name());
-#endif
     custom_cfg_item_write(CFG_ITEM_BLE_NAME, host_name, host_name_len);
 
-#if !(CONFIG_APP_OTA_ENABLE && RCSP_BTMATE_EN && CONFIG_APP_DONGLE && TCFG_PC_ENABLE && TCFG_USB_CUSTOM_HID_ENABLE)
     //CFG_ITEM_BLE_ADDR
     le_controller_get_mac(addr);
     //CFG_ITEM_SCAN_RSP
@@ -1186,19 +1166,19 @@ static u32 ex_cfg_fill_content(ex_cfg_t *user_ex_cfg, u8 *write_flag)
                 i += (1 + *item_data);
                 item_data += (1 + *item_data);
             }
+
             if (rsp_len + sizeof(struct excfg_rsp_payload) + 2 > 31) {
-                rsp_len -= (rsp_len + sizeof(struct excfg_rsp_payload) + 2 - 31);
-                *rsp_data = rsp_len - 1;
                 cfg_printf("rsp data overflow!!!\n");
+            } else {
+                *(rsp_data + rsp_len) = sizeof(struct excfg_rsp_payload) + 1;        //fill jlpayload
+                *(rsp_data + rsp_len + 1) = 0xff;                                    // HCI_EIR_DATATYPE_MANUFACTURER_SPECIFIC_DATA
+                memcpy(rsp_data + rsp_len + 2, &rsp_payload, sizeof(struct excfg_rsp_payload));
+                rsp_len += (2 + sizeof(struct excfg_rsp_payload));
+                addr[0] += 1;                                                        //修改地址，让手机重新发现服务, 这里地址的修改规则可以用户自行设置
+                cfg_printf("new rsp_data:\n");
+                cfg_printf_buf(rsp_data, rsp_len);
+                custom_cfg_item_write(CFG_ITEM_SCAN_RSP, rsp_data, rsp_len);
             }
-            *(rsp_data + rsp_len) = sizeof(struct excfg_rsp_payload) + 1;        //fill jlpayload
-            *(rsp_data + rsp_len + 1) = 0xff;                                    // HCI_EIR_DATATYPE_MANUFACTURER_SPECIFIC_DATA
-            memcpy(rsp_data + rsp_len + 2, &rsp_payload, sizeof(struct excfg_rsp_payload));
-            rsp_len += (2 + sizeof(struct excfg_rsp_payload));
-            addr[0] += 1;                                                        //修改地址，让手机重新发现服务, 这里地址的修改规则可以用户自行设置
-            cfg_printf("new rsp_data:\n");
-            cfg_printf_buf(rsp_data, rsp_len);
-            custom_cfg_item_write(CFG_ITEM_SCAN_RSP, rsp_data, rsp_len);
 
             //广播包里有0xff字段也要找出来去掉，小程序判断到adv和rsp有重复字段是会出错
             u8 new_adv_len = 0;
@@ -1238,7 +1218,6 @@ static u32 ex_cfg_fill_content(ex_cfg_t *user_ex_cfg, u8 *write_flag)
     item_data = get_last_device_connect_linkkey(&len);
     put_buf(item_data, len);
     custom_cfg_item_write(CFG_ITEM_LAST_DEVICE_LINK_KEY_INFO, item_data, len);
-#endif
 
 #if VER_INFO_EXT_COUNT
     u8 authkey_len = 0;
@@ -1273,9 +1252,6 @@ static u32 ex_cfg_fill_content(ex_cfg_t *user_ex_cfg, u8 *write_flag)
     sdk_type = RCSP_SDK_TYPE;
 #endif
     custom_cfg_item_write(CFG_ITEM_SDK_TYPE, &sdk_type, sizeof(sdk_type));
-
-    // 可填充hid信息
-    // custom_cfg_item_write(CFG_ITEM_HID_PARAM, &hid_param, sizeof(hid_param));
     return 0;
 }
 
@@ -1366,7 +1342,6 @@ u32 ex_cfg_get_start_addr(void)
 }
 
 #define SECOTR_SIZE	(4*1024L)
-#define PAGE_SIZE	(256L)
 u32 ex_cfg_fill_content_api(void)
 {
     ex_cfg_get_addr_and_len(&exif_info.addr, &exif_info.len);
@@ -1379,20 +1354,7 @@ u32 ex_cfg_fill_content_api(void)
             while (1);
         }
 
-        u32 exif_end = exif_info.addr + exif_info.len;
-        if (exif_info.addr % SECOTR_SIZE || exif_end % SECOTR_SIZE) {
-            for (u32 erase_addr = exif_info.addr, end_addr = exif_end; erase_addr < exif_end;) {
-                if ((0 == (erase_addr % SECOTR_SIZE)) && ((exif_end - erase_addr) >= SECOTR_SIZE)) {
-                    sfc_erase(SECTOR_ERASER, erase_addr);
-                    erase_addr += SECOTR_SIZE;
-                } else {
-                    sfc_erase(PAGE_ERASER, erase_addr);
-                    erase_addr += PAGE_SIZE;
-                }
-            }
-        } else {
-            sfc_erase(SECTOR_ERASER, exif_info.addr);
-        }
+        sfc_erase(SECTOR_ERASER, exif_info.addr);
 #else
 #error "To do ..."
 #endif

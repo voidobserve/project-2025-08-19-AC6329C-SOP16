@@ -1,8 +1,12 @@
 #ifndef led_srtip_sys_h
 #define led_srtip_sys_h
 
+
 // 控灯系统属性
+
 #include "cpu.h"
+
+
 /******************************************************************系统cfg******************************************************************/
 /*定义数据总线大端/小端，二选一*/
 #define SYS_LITTLE_END  0
@@ -23,24 +27,43 @@
                     ((u32)(n) & 0x000000ff << 24))
 
 #endif
+
+
+typedef enum
+{
+    _RGB,
+    _RBG,
+    _GBR,
+    _GRB,
+    _BRG,
+    _BGR
+}rgb_sequence_e;
+
+
 /******************************************************************灯具配置 cfg******************************************************************/
-
-#define TYPE_Fiber_optic_lights     (1)//光纤灯
-#define TYPE_Magic_lights           (2)//幻彩灯
-#define LED_STRIP_TYPE   TYPE_Fiber_optic_lights
-
 /* 定义灯珠颜色，五选1*/
-// #define LED_STRIP_R      
-// #define LED_STRIP_RG     
-// #define LED_STRIP_RGB    
-#define LED_STRIP_RGBW    1
-// #define LED_STRIP_RGBCW  
+// #define LED_SRTIP_R
+// #define LED_SRTIP_RG
+// #define LED_STRIP_RGB
+#define LED_STRIP_RGBW
+// #define LED_STRIP_RGBCW
 
 /* 定义灯珠通道,取值1~5*/
 #define LED_STRIP_CH  3
 
+#define MAX_DUAN_OF_PAINT   20      //涂抹模式最多支持20段,根据涂鸦平台定义
+// #define RGB_SEQUENCE        _RGB    //定义RGB通道顺序，根据实际定义
+#define RGB_SEQUENCE        _BGR    //定义RGB通道顺序，根据实际定义
+#define Disp_buf_Len        1100    //显存大小，决定了可用灯带的长度，3*350=1050，最多1050个灯珠，350组灯
 
 /******************************************************************common*****************************************************************/
+
+typedef struct
+{
+    u8 r;
+    u8 g;
+    u8 b;
+}rgb_sequence_t;
 
 typedef struct _HSV_COLOUR_DAT
 {
@@ -49,6 +72,12 @@ typedef struct _HSV_COLOUR_DAT
     u32 v_val;
 }HSV_COLOUR_DAT;
 
+typedef struct _LED_COLOUR_DAT
+{
+    u32 r_val;
+    u32 g_val;
+    u32 b_val;
+}LED_COLOUR_DAT;
 
 typedef struct
 {
@@ -94,26 +123,18 @@ typedef enum
     DEVICE_ON,      //开机
 }ON_OFF_FLAG;
 
-typedef enum
+//灯具属性
+typedef struct
 {
-    IS_AUTO,
-    IS_PAUSE,
-} _AUTO_T;
+    u16 lenght;     //灯带长度
+    u8  channel;    //通道
+}led_strip_t;
+extern led_strip_t g_led_strip;
+extern u8 on_off_flag;
+extern u32 LED_LEDGTH;
+extern const rgb_sequence_t rgb_sequence_buf[6];
 
-typedef enum
-{
-    PHONE_MIC,     //手机麦克风
-    EXTERIOR_MIC,  //外部麦克风
-}MIC_TYPE_T;
+void init_led_strip(led_strip_t *strip);
 
-
-typedef enum
-{
-    IR_TIMER_NO = 0,        //无定时
-    IR_TIMER_30MIN = 30*60*1000,
-    IR_TIMER_60MIN = 60*60*1000,
-    IR_TIMER_90MIN = 90*60*1000,
-    IR_TIMER_120MIN = 120*60*1000,
-}AUTO_TIME_T;
 
 #endif

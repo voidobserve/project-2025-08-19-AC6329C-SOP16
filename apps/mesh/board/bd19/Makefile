@@ -2,14 +2,12 @@
 # make 编译并下载
 # make VERBOSE=1 显示编译详细过程
 # make clean 清除编译临时文件
-#
 # 注意： Linux 下编译方式：
-#     1. 从 http://pkgman.jieliapp.com/doc/all 处找到下载链接
-#     2. 下载后，解压到 /opt/jieli 目录下，保证
-#       /opt/jieli/common/bin/clang 存在（注意目录层次）
-#     3. 确认 ulimit -n 的结果足够大（建议大于8096），否则链接可能会因为打开文件太多而失败
-#       可以通过 ulimit -n 8096 来设置一个较大的值
-#
+# 1. 从 http://pkgman.jieliapp.com/doc/all 处找到下载链接
+# 2. 下载后，解压到 /opt/jieli 目录下，保证
+#   /opt/jieli/common/bin/clang 存在（注意目录层次）
+# 3. 确认 ulimit -n 的结果足够大（建议大于8096），否则链接可能会因为打开文件太多而失败
+#   可以通过 ulimit -n 8096 来设置一个较大的值
 
 # 工具路径设置
 ifeq ($(OS), Windows_NT)
@@ -18,36 +16,31 @@ TOOL_DIR := C:/JL/pi32/bin
 CC    := clang.exe
 CXX   := clang.exe
 LD    := q32s-lto-wrapper.exe
-AR    := llvm-ar.exe
+AR    := q32s-lto-ar.exe
 MKDIR := mkdir_win -p
 RM    := rm -rf
 
 SYS_LIB_DIR := C:/JL/pi32/q32s-lib
 SYS_INC_DIR := C:/JL/pi32/q32s-include
 EXT_CFLAGS  := # Windows 下不需要 -D__SHELL__
-export PATH:=$(TOOL_DIR);$(PATH)
 
 ## 后处理脚本
 FIXBAT          := ..\..\..\..\tools\utils\fixbat.exe # 用于处理 utf8->gbk 编码问题
-POST_SCRIPT     := ../../../../cpu/bd19/tools/download.bat
-RUN_POST_SCRIPT := ..\..\..\..\cpu\bd19\tools\download.bat
+POST_SCRIPT     := ..\..\..\..\cpu\bd19\tools\download.bat
+RUN_POST_SCRIPT := $(POST_SCRIPT)
 else
 # Linux 下工具链位置
 TOOL_DIR := /opt/jieli/q32s/bin
 CC    := clang
-CXX   := clang
+CXX   := clang++
 LD    := lto-wrapper
 AR    := lto-ar
 MKDIR := mkdir -p
 RM    := rm -rf
-export OBJDUMP := $(TOOL_DIR)/objdump
-export OBJCOPY := $(TOOL_DIR)/objcopy
-export OBJSIZEDUMP := $(TOOL_DIR)/objsizedump
 
 SYS_LIB_DIR := $(TOOL_DIR)/../lib
 SYS_INC_DIR := $(TOOL_DIR)/../include
 EXT_CFLAGS  := -D__SHELL__ # Linux 下需要这个保证正确处理 download.c
-export PATH:=$(TOOL_DIR):$(PATH)
 
 ## 后处理脚本
 FIXBAT          := touch # Linux下不需要处理 bat 编码问题
@@ -92,10 +85,6 @@ CFLAGS := \
 	-fms-extensions \
 
 
-# C++额外的编译参数
-CXXFLAGS :=
-
-
 # 宏定义
 DEFINES := \
 	-DSUPPORT_MS_EXTENSIONS \
@@ -108,8 +97,7 @@ DEFINES := \
 	-DSINE_MAKE_IN_MASK \
 	-DCONFIG_MMU_ENABLE \
 	-DCONFIG_AEC_M=256 \
-	-DCONFIG_AUDIO_ONCHIP \
-	-DCONFIG_MEDIA_NEW_ENABLE \
+	-DCONFIG_MEDIA_ORIGIN_ENABLE \
 	-D__GCC_Q32S__ \
 	-DCONFIG_NEW_ECC_ENABLE \
 	-DCONFIG_CRYPTO_TOOLBOX_OSIZE_IN_MASKROM \
@@ -119,19 +107,16 @@ DEFINES := \
 	-DCONFIG_EVENT_KEY_MAP_ENABLE=0 \
 	-DTIMER_POOL_NUM_CONFIG=10 \
 	-DAPP_ASYNC_POOL_NUM_CONFIG=0 \
-	-DSDK_VERSION_CFG_DEFINE=0x230003 \
-	-DSDK_VERSION_DATE_DEFINE=20240331 \
 	-DVFS_ENABLE=1 \
 	-DUSE_SDFILE_NEW=1 \
 	-DVFS_FILE_POOL_NUM_CONFIG=0 \
 	-DSDFILE_VERSION=0x020000 \
 	-DVM_MAX_SIZE_CONFIG=16*1024 \
-	-DVM_ITEM_MAX_NUM=256 \
+	-DVM_ITEM_MAX_NUM=128 \
 	-DCONFIG_TWS_ENABLE \
 	-DCONFIG_MESH_CASE_ENABLE \
 	-DCONFIG_TRANSFER_ENABLE \
 	-DCONFIG_LITE_AEC_ENABLE=0 \
-	-DCONFIG_LITE_AUDIO \
 	-DCONFIG_LMP_RESET_ENABLE \
 	-DCONFIG_LMP_REFRESH_ENCRYPTION_KEY_ENABLE \
 	-DCONFIG_LINK_DISTURB_SCAN_ENABLE=0 \
@@ -141,6 +126,7 @@ DEFINES := \
 	-DCONFIG_ITEM_FORMAT_VM \
 	-DTCFG_APP_BT_EN=1 \
 	-DUSB_PC_NO_APP_MODE \
+	-D__LD__ \
 
 
 DEFINES += $(EXT_CFLAGS) # 额外的一些定义
@@ -156,21 +142,17 @@ INCLUDES := \
 	-I../../../../include_lib/system/device \
 	-I../../../../include_lib/system/fs \
 	-I../../../../include_lib/system/ui \
-	-I../../../../include_lib/system/math/cpu/bd19 \
 	-I../../../../include_lib/btctrler \
 	-I../../../../include_lib/btctrler/port/bd19 \
 	-I../../../../include_lib/update \
 	-I../../../../include_lib/agreement \
 	-I../../../../include_lib/btstack/third_party/common \
 	-I../../../../include_lib/btstack/third_party/rcsp \
-	-I../../../../include_lib/media/media_new \
-	-I../../../../include_lib/media/media_new/media \
-	-I../../../../include_lib/media/media_new/media/cpu/bd19 \
-	-I../../../../include_lib/media/media_new/media/cpu/bd19/asm \
-	-I../../../../apps/common/third_party_profile/llsync_mesh/cfg \
-	-I../../../../apps/common/third_party_profile/llsync_mesh/data_template \
-	-I../../../../apps/common/third_party_profile/llsync_mesh/include \
-	-I../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/include \
+	-I../../../../include_lib/media/media_origin \
+	-I../../../../include_lib/media/media_origin/media \
+	-I../../../../include_lib/media/media_origin/media/cpu/bd19 \
+	-I../../../../include_lib/media/media_origin/media/cpu/bd19/asm \
+	-I../../../../include_lib/media/media_origin/media/aec \
 	-I../../../../apps/mesh/board/bd19 \
 	-I../../../../apps/mesh/include \
 	-I../../../../apps/common \
@@ -179,14 +161,9 @@ INCLUDES := \
 	-I../../../../apps/common/third_party_profile/common \
 	-I../../../../apps/common/third_party_profile/jieli/JL_rcsp/rcsp_updata \
 	-I../../../../apps/common/third_party_profile/jieli/JL_rcsp \
-	-I../../../../apps/common/third_party_profile/jieli/gatt_common \
 	-I../../../../apps/common/third_party_profile/jieli \
 	-I../../../../include_lib/system/os/FreeRTOS \
 	-I../../../../include_lib/btstack \
-	-I../../../../cpu/bd19 \
-	-I../../../../cpu/bd19/audio_encode \
-	-I../../../../cpu/bd19/audio_decode \
-	-I../../../../apps/common/audio \
 	-I../../../../apps/common/third_party_profile \
 	-I../../../../apps/common/third_party_profile/sig_mesh \
 	-I../../../../apps/common/third_party_profile/sig_mesh/tinycrypt/include \
@@ -197,27 +174,15 @@ INCLUDES := \
 
 # 需要编译的 .c 文件
 c_SRC_FILES := \
-	../../../../apps/common/audio/audio_digital_vol.c \
 	../../../../apps/common/bt_common/bt_test_api.c \
 	../../../../apps/common/debug/debug.c \
 	../../../../apps/common/device/key/adkey.c \
 	../../../../apps/common/device/key/iokey.c \
-	../../../../apps/common/device/key/irkey.c \
 	../../../../apps/common/device/key/key_driver.c \
-	../../../../apps/common/temp_trim/dtemp_pll_trim.c \
 	../../../../apps/common/third_party_profile/common/custom_cfg.c \
-	../../../../apps/common/third_party_profile/jieli/JL_rcsp/bt_trans_data/rcsp_hid_inter.c \
 	../../../../apps/common/third_party_profile/jieli/JL_rcsp/rcsp_bluetooth.c \
 	../../../../apps/common/third_party_profile/jieli/JL_rcsp/rcsp_updata/rcsp_ch_loader_download.c \
 	../../../../apps/common/third_party_profile/jieli/JL_rcsp/rcsp_updata/rcsp_user_update.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/data_template/ble_qiot_template.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/hal/ble_qiot_export.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/hal/ble_qiot_import.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/core/ble_qiot_utils_mesh.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/utils/ble_qiot_utils_base64.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/utils/ble_qiot_utils_hmac256.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/utils/ble_qiot_utils_log.c \
-	../../../../apps/common/third_party_profile/llsync_mesh/sdk_src/utils/ble_qiot_utils_sha256.c \
 	../../../../apps/common/third_party_profile/sig_mesh/access.c \
 	../../../../apps/common/third_party_profile/sig_mesh/adaptation/ble_core/adv_core.c \
 	../../../../apps/common/third_party_profile/sig_mesh/adaptation/ble_core/gatt_core.c \
@@ -276,15 +241,11 @@ c_SRC_FILES := \
 	../../../../apps/mesh/examples/generic_onoff_client.c \
 	../../../../apps/mesh/examples/generic_onoff_server.c \
 	../../../../apps/mesh/examples/light_lightness_server.c \
-	../../../../apps/mesh/examples/onoff_tobe_provision.c \
-	../../../../apps/mesh/examples/provisioner.c \
-	../../../../apps/mesh/examples/tencent_mesh.c \
 	../../../../apps/mesh/examples/vendor_client.c \
 	../../../../apps/mesh/examples/vendor_server.c \
 	../../../../apps/mesh/lib_config/lib_btctrler_config.c \
 	../../../../apps/mesh/lib_config/lib_btstack_config.c \
 	../../../../apps/mesh/lib_config/lib_driver_config.c \
-	../../../../apps/mesh/lib_config/lib_media_config.c \
 	../../../../apps/mesh/lib_config/lib_profile_config.c \
 	../../../../apps/mesh/lib_config/lib_system_config.c \
 	../../../../apps/mesh/lib_config/lib_update_config.c \
@@ -292,11 +253,6 @@ c_SRC_FILES := \
 	../../../../apps/mesh/user_cfg.c \
 	../../../../apps/mesh/version.c \
 	../../../../cpu/bd19/adc_api.c \
-	../../../../cpu/bd19/audio_codec_clock.c \
-	../../../../cpu/bd19/audio_decode/audio_decode.c \
-	../../../../cpu/bd19/audio_encode/audio_encode.c \
-	../../../../cpu/bd19/audio_pwm.c \
-	../../../../cpu/bd19/audio_resample_demo.c \
 	../../../../cpu/bd19/charge.c \
 	../../../../cpu/bd19/chargestore.c \
 	../../../../cpu/bd19/handshake_timer.c \
@@ -310,8 +266,6 @@ c_SRC_FILES := \
 	../../../../cpu/bd19/pwm_led.c \
 	../../../../cpu/bd19/setup.c \
 	../../../../cpu/bd19/spi.c \
-	../../../../cpu/bd19/spi_test.c \
-	../../../../cpu/bd19/tone_player.c \
 	../../../../cpu/bd19/uart_dev.c \
 
 
@@ -325,14 +279,6 @@ s_SRC_FILES :=
 
 # 需要编译的 .cpp 文件
 cpp_SRC_FILES :=
-
-
-# 需要编译的 .cc 文件
-cc_SRC_FILES :=
-
-
-# 需要编译的 .cxx 文件
-cxx_SRC_FILES :=
 
 
 # 链接参数
@@ -352,13 +298,6 @@ LFLAGS := \
 	../../../../cpu/bd19/liba/btctrler.a \
 	../../../../cpu/bd19/liba/rcsp_stack.a \
 	../../../../cpu/bd19/liba/agreement.a \
-	../../../../cpu/bd19/liba/media.a \
-	../../../../cpu/bd19/liba/lc3_codec_lib.a \
-	../../../../cpu/bd19/liba/usbc_codec_lib.a \
-	../../../../cpu/bd19/liba/wtgv2_dec_lib.a \
-	../../../../cpu/bd19/liba/wav_dec_lib.a \
-	../../../../cpu/bd19/liba/lib_adpcm_ima_code.a \
-	../../../../cpu/bd19/liba/opus_enc_lib.a \
 	../../../../cpu/bd19/liba/update.a \
 	--end-group \
 	-T../../../../cpu/bd19/sdk.ld \
@@ -383,10 +322,8 @@ c_OBJS    := $(c_SRC_FILES:%.c=%.c.o)
 S_OBJS    := $(S_SRC_FILES:%.S=%.S.o)
 s_OBJS    := $(s_SRC_FILES:%.s=%.s.o)
 cpp_OBJS  := $(cpp_SRC_FILES:%.cpp=%.cpp.o)
-cxx_OBJS  := $(cxx_SRC_FILES:%.cxx=%.cxx.o)
-cc_OBJS   := $(cc_SRC_FILES:%.cc=%.cc.o)
 
-OBJS      := $(c_OBJS) $(S_OBJS) $(s_OBJS) $(cpp_OBJS) $(cxx_OBJS) $(cc_OBJS)
+OBJS      := $(c_OBJS) $(S_OBJS) $(s_OBJS) $(cpp_OBJS)
 DEP_FILES := $(OBJS:%.o=%.d)
 
 
@@ -404,14 +341,7 @@ endif
 # 一些旧的 make 不支持 file 函数，需要 make 的时候指定 LINK_AT=0 make
 LINK_AT ?= 1
 
-# 表示下面的不是一个文件的名字，无论是否存在 all, clean, pre_build 这样的文件
-# 还是要执行命令
-# see: https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: all clean pre_build
-
-# 不要使用 make 预设置的规则
-# see: https://www.gnu.org/software/make/manual/html_node/Suffix-Rules.html
-.SUFFIXES:
 
 all: pre_build $(OUT_ELF)
 	$(info +POST-BUILD)
@@ -419,11 +349,11 @@ all: pre_build $(OUT_ELF)
 
 pre_build:
 	$(info +PRE-BUILD)
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -D__LD__ -E -P ../../../../cpu/bd19/sdk_used_list.c -o ../../../../cpu/bd19/sdk_used_list.used
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -D__LD__ -E -P ../../../../cpu/bd19/sdk_ld.c -o ../../../../cpu/bd19/sdk.ld
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -D__LD__ -E -P ../../../../cpu/bd19/tools/download.c -o $(POST_SCRIPT)
+	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -E -P ../../../../cpu/bd19/sdk_used_list.c -o ../../../../cpu/bd19/sdk_used_list.used
+	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -E -P ../../../../cpu/bd19/sdk_ld.c -o ../../../../cpu/bd19/sdk.ld
+	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -E -P ../../../../cpu/bd19/tools/download.c -o $(POST_SCRIPT)
 	$(QUITE) $(FIXBAT) $(POST_SCRIPT)
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -D__LD__ -E -P ../../../../cpu/bd19/tools/isd_config_rule.c -o ../../../../cpu/bd19/tools/isd_config.ini
+	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -E -P ../../../../cpu/bd19/tools/isd_config_rule.c -o ../../../../cpu/bd19/tools/isd_config.ini
 
 clean:
 	$(QUITE) $(RM) $(OUT_ELF)
@@ -447,38 +377,26 @@ endif
 
 $(BUILD_DIR)/%.c.o : $(ROOT_PREFIX)/%.c
 	$(info +CC $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
+	@$(MKDIR) $(@D)
+	@$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT "$@" $< -o $(@:.o=.d)
 	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/%.S.o : $(ROOT_PREFIX)/%.S
 	$(info +AS $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
+	@$(MKDIR) $(@D)
+	@$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT "$@" $< -o $(@:.o=.d)
 	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/%.s.o : $(ROOT_PREFIX)/%.s
 	$(info +AS $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
+	@$(MKDIR) $(@D)
+	@$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT "$@" $< -o $(@:.o=.d)
 	$(QUITE) $(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 $(BUILD_DIR)/%.cpp.o : $(ROOT_PREFIX)/%.cpp
 	$(info +CXX $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
-
-$(BUILD_DIR)/%.cxx.o : $(ROOT_PREFIX)/%.cxx
-	$(info +CXX $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
-
-$(BUILD_DIR)/%.cc.o : $(ROOT_PREFIX)/%.cc
-	$(info +CXX $<)
-	$(QUITE) $(MKDIR) $(@D)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT $@ $< -o $(@:.o=.d)
-	$(QUITE) $(CXX) $(CXXFLAGS) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
+	@$(MKDIR) $(@D)
+	@$(CXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -MM -MT "$@" $< -o $(@:.o=.d)
+	$(QUITE) $(CXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
 
 -include $(DEP_FILES)

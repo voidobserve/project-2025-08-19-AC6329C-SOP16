@@ -152,17 +152,7 @@ static void gamebox_ble_mouse_timer_handler(void)
     }
 }
 
-void gamebox_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void gamebox_set_soft_poweroff(void)
+void gamebox_set_soft_poweroff(void)
 {
     log_info("gamebox_set_soft_poweroff\n");
     is_gamebox_active = 1;
@@ -202,7 +192,7 @@ static void gamebox_app_start()
 
 #if (TCFG_HID_AUTO_SHUTDOWN_TIME)
     //无操作定时软关机
-    g_auto_shutdown_timer = sys_timeout_add(POWER_EVENT_POWER_SOFTOFF, gamebox_power_event_to_user, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
+    g_auto_shutdown_timer = sys_timeout_add(NULL, game_set_soft_poweroff, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
 #endif
 }
 
@@ -247,8 +237,6 @@ static int gamebox_bt_hci_event_handler(struct bt_event *bt)
     return 0;
 }
 
-extern void le_hogp_set_PNP_info(const u8 *info);
-static const u8 gambox_PnP_ID[] = {0x02, 0x17, 0x27, 0x40, 0x00, 0x23, 0x00};
 static int gamebox_bt_connction_status_event_handler(struct bt_event *bt)
 {
     log_info("----%s %d", __FUNCTION__, bt->event);
@@ -262,9 +250,6 @@ static int gamebox_bt_connction_status_event_handler(struct bt_event *bt)
          * 蓝牙初始化完成
          */
         log_info("BT_STATUS_INIT_OK\n");
-
-        log_info("set gamebox pnp\n");
-        le_hogp_set_PNP_info(gambox_PnP_ID);
 
         ble_module_enable(1);
         ble_hid_timer_handle = sys_s_hi_timer_add((void *)0, gamebox_ble_mouse_timer_handler, 10);

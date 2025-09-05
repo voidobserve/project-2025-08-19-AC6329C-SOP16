@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "WS2812FX.H": "cpp",
+        "*.ld": "c",
+        "one_wire.h": "c",
+        "led_strip_drive.h": "c",
+        "led_strand_effect.h": "c",
+        "led_strip_sys.h": "c",
+        "adafruit_typedef.h": "c",
+        "adafruit_neopixel.h": "c",
+        "array": "c",
+        "charconv": "c",
+        "compare": "c",
+        "functional": "c",
+        "ratio": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "variant": "c"
+    }
+}

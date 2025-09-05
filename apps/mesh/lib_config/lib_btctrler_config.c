@@ -15,7 +15,6 @@
 #include "system/includes.h"
 #include "btcontroller_config.h"
 #include "bt_common.h"
-#include "le_common.h"
 
 /*-----------------------------------------------------------*/
 /**
@@ -83,9 +82,6 @@ const int config_bt_temperature_pll_trim = 0;
 /*security check*/
 const int config_bt_security_vulnerability = 0;
 
-//DUT使用哪种模式通信: 0: HCI 1:2_wire
-const int config_dut_protocol_mode = 0;
-
 
 const int CONFIG_BTCTLER_QOS_ENABLE         = 1;
 
@@ -100,34 +96,24 @@ const int CONFIG_INQUIRY_SCAN_POWER         = 7;
  * @brief Bluetooth LE setting
  */
 /*-----------------------------------------------------------*/
-const int config_btctler_coded_type = CONN_SET_PHY_OPTIONS_S2;
-#if CONFIG_BT_EXT_ADV_MODE
-#define EXT_ADV_CFG          LE_EXTENDED_ADVERTISING | LE_PERIODIC_ADVERTISING | CHANNEL_SELECTION_ALGORITHM_2
-#define EXT_ADV_CFG_HW       2// ext adv/ scan + creat_conn
-#else
-#define EXT_ADV_CFG          0
-#define EXT_ADV_CFG_HW       0
-#endif
-
-const uint64_t config_btctler_le_features = LE_ENCRYPTION | EXT_ADV_CFG;
+const uint64_t config_btctler_le_features = LE_ENCRYPTION;
 const int config_btctler_le_roles    = (LE_ADV | LE_SCAN | LE_SLAVE | LE_MASTER);
 // Master multi-link
 const int config_btctler_le_master_multilink = 0;
-const int config_btctler_le_slave_multilink = 0;
 // Master AFH
 const int config_btctler_le_afh_en = 0;
 // LE RAM Control
-const int config_btctler_le_hw_nums = 3 + EXT_ADV_CFG_HW;
-const int config_btctler_le_rx_nums = 10 + EXT_ADV_CFG_HW * 3;
+const int config_btctler_le_hw_nums = 3;
+const int config_btctler_le_rx_nums = 10;
 const int config_btctler_le_acl_packet_length = 27;
-const int config_btctler_le_acl_total_nums = 10 + EXT_ADV_CFG_HW * 3;
+const int config_btctler_le_acl_total_nums = 10;
 
 const int config_btctler_le_slave_conn_update_winden = 1500;//range:100 to 2500
 
 const int ble_disable_wait_enable = 1;                      //不开启wait_enable会导致升级调用ll_destory的时候出现BT访问mmu异常
 
 // LE vendor baseband
-u32 config_vendor_le_bb = 0;
+const u32 config_vendor_le_bb = 0;
 
 /*-----------------------------------------------------------*/
 /**

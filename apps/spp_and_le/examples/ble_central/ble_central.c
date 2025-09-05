@@ -57,7 +57,7 @@
 
 //连接周期
 #define BASE_INTERVAL_MIN   (6)//最小的interval
-#define SET_CONN_INTERVAL   (BASE_INTERVAL_MIN*4) //(unit:1.25ms)
+#define SET_CONN_INTERVAL   (BASE_INTERVAL_MIN*8) //(unit:1.25ms)
 //连接latency
 #define SET_CONN_LATENCY    0  //(unit:conn_interval)
 //连接超时
@@ -70,17 +70,12 @@
 static  u16 cetl_con_handle;
 static  u8 search_profile_complete_flag[SUPPORT_MAX_GATT_CLIENT]; /*搜索完服务*/
 
-#define CETL_TEST_WRITE_SEND_DATA             0//连上测试自动发送数据
+#define CETL_TEST_WRITE_SEND_DATA             1//连上测试自动发送数据
 #define CETL_TEST_SEND_EN                     1//
 
-#if CONFIG_BLE_HIGH_SPEED
-#define TEST_TIMER_MS                         5/*定时发包的时间*/
-#else
 #define TEST_TIMER_MS                         500/*定时发包的时间*/
-#endif
-
 #define CETL_TEST_DISPLAY_DATA                1//显示数据打印
-#define CETL_TEST_PAYLOAD_LEN                 (244)//发送配PDU长度是251的包
+#define CETL_TEST_PAYLOAD_LEN                (256)//包的长度
 
 static  u32 send_test_count[SUPPORT_MAX_GATT_CLIENT];
 static  u32 recieve_test_count[SUPPORT_MAX_GATT_CLIENT];
@@ -116,12 +111,8 @@ static gatt_ctrl_t cetl_gatt_control_block = {
     .cbuffer_size = ATT_SEND_CBUF_SIZE,
     .multi_dev_flag	= 0,
 
-#if CONFIG_BT_GATT_SERVER_NUM
     //config
-    .server_config = &central_server_init_cfg,
-#else
     .server_config = NULL,
-#endif
 
 #if CONFIG_BT_GATT_CLIENT_NUM
     .client_config = &central_client_init_cfg,
@@ -248,21 +239,17 @@ static void cetl_client_test_write(void)
 
 #if CETL_TEST_SEND_EN
         if (tmp_handle && cetl_ble_client_write_handle && search_profile_complete_flag[i]) {
-            do {
-                if (ble_comm_att_check_send(tmp_handle, send_len)) {
-                    ret = ble_comm_att_send_data(tmp_handle, cetl_ble_client_write_handle, &count, send_len, ATT_OP_WRITE_WITHOUT_RESPOND);
+            if (ble_comm_att_check_send(tmp_handle, send_len)) {
+                ret = ble_comm_att_send_data(tmp_handle, cetl_ble_client_write_handle, &count, send_len, ATT_OP_WRITE_WITHOUT_RESPOND);
 
 #if CETL_TEST_DISPLAY_DATA
-                    log_info("test_write:%04x,%d", tmp_handle, ret);
+                log_info("test_write:%04x,%d", tmp_handle, ret);
 #endif
-                    if (!ret) {
-                        /* putchar('T'); */
-                        send_test_count[i] += send_len;
-                    }
-                } else {
-                    break;
+                if (!ret) {
+                    /* putchar('T'); */
+                    send_test_count[i] += send_len;
                 }
-            } while (ret == 0);
+            }
         }
 #endif
 
@@ -337,12 +324,7 @@ static int cetl_client_event_packet_handler(int event, u8 *packet, u16 size, u8 
         break;
 
     case GATT_COMM_EVENT_CONNECTION_COMPLETE:
-        if (!cetl_con_handle) {
-            cetl_con_handle = little_endian_read_16(packet, 0);
-#if CONFIG_BT_GATT_SERVER_NUM
-            central_set_server_conn_handle(cetl_con_handle);
-#endif
-        }
+        cetl_con_handle = little_endian_read_16(packet, 0);
         log_info("connection_handle:%04x, rssi= %d\n", cetl_con_handle, ble_vendor_get_peer_rssi(cetl_con_handle));
         log_info("peer_address_info:");
         put_buf(&ext_param[7], 7);
@@ -353,9 +335,6 @@ static int cetl_client_event_packet_handler(int event, u8 *packet, u16 size, u8 
 
         if (cetl_con_handle == little_endian_read_16(packet, 0)) {
             cetl_con_handle = 0;
-#if CONFIG_BT_GATT_SERVER_NUM
-            central_set_server_conn_handle(cetl_con_handle);
-#endif
         }
 
         i = ble_comm_dev_get_index(little_endian_read_16(packet, 0), SUPPORT_MAX_GATT_CLIENT);
@@ -380,7 +359,6 @@ static int cetl_client_event_packet_handler(int event, u8 *packet, u16 size, u8 
         put_buf(&packet[1], 6);
         if (packet[8] == 2) {
             log_info("is TEST_BOX\n");
-            break;
         }
         client_match_cfg_t *match_cfg = ext_param;
         if (match_cfg) {
@@ -405,8 +383,8 @@ static int cetl_client_event_packet_handler(int event, u8 *packet, u16 size, u8 
     }
     break;
 
+
     case GATT_COMM_EVENT_MTU_EXCHANGE_COMPLETE:
-        log_info("con_handle= %02x, ATT MTU = %u\n", little_endian_read_16(packet, 0), little_endian_read_16(packet, 2));
         break;
 
     case GATT_COMM_EVENT_GATT_SEARCH_PROFILE_COMPLETE: {
@@ -466,7 +444,7 @@ void cetl_client_init(void)
 
 #if CETL_TEST_WRITE_SEND_DATA
     if (TEST_TIMER_MS < 10) {
-        sys_s_hi_timer_add(0, cetl_client_test_write, TEST_TIMER_MS);
+        sys_hi_timer_add(0, cetl_client_test_write, TEST_TIMER_MS);
     } else {
         sys_timer_add(0, cetl_client_test_write, TEST_TIMER_MS);
     }
@@ -489,10 +467,6 @@ void bt_ble_init(void)
 
 #if CONFIG_BT_GATT_CLIENT_NUM
     cetl_client_init();
-#endif
-
-#if CONFIG_BT_GATT_SERVER_NUM
-    central_server_init();
 #endif
 
     ble_module_enable(1);

@@ -14,7 +14,6 @@
 
 #define CONFIG_DEBUG_ENABLE
 
-#define TCFG_MEDIA_LIB_USE_MALLOC		    1
 #include "board_config.h"
 
 #include "btcontroller_mode.h"
@@ -22,12 +21,6 @@
 #include "user_cfg_id.h"
 
 // #define APP_PRIVATE_PROFILE_CFG
-
-//V5.0 扩展广播/扫描使能
-#define CONFIG_BT_EXT_ADV_MODE            0
-#if CONFIG_BT_EXT_ADV_MODE
-#define APP_TO_ALLOW_EXT_ADV
-#endif
 
 #if (CONFIG_BT_MODE == BT_NORMAL)
 //enable dut mode,need disable sleep(TCFG_LOWPOWER_LOWPOWER_SEL = 0)

@@ -16,7 +16,6 @@
 #include "app_power_manage.h"
 #include "le_client_demo.h"
 #include "usb/device/hid.h"
-#include "usb/device/cdc.h"
 #include "app_comm_bt.h"
 
 #define LOG_TAG_CONST       DONGLE
@@ -41,24 +40,22 @@
 #endif
 
 //2.4G模式: 0---ble, 非0---2.4G配对码
-#define CFG_RF_24G_CODE_ID       (0) //32bits
-/* #define CFG_RF_24G_CODE_ID  (0x5555AAAA) */
+#define CFG_RF_24G_CODE_ID       (0) //<=24bits
+/* #define CFG_RF_24G_CODE_ID       (0x23) //<=24bits */
 
 static u8  is_app_dongle_active = 0;
 
-/*测试两个usb设备上行 send*/
-#define CONFIG_HIDKEY_REPORT_TEST    0//(BIT(0)|BIT(1))/*for test usb channel:bit0~ch1,bit1-ch2*/
 
 //配置选择上报PC的描述符
+
+
 //---------------------------------------------------------------------
 //==========hid_key
-#define HIDKEY_REPORT_ID               0x1
-
 static const u8 sHIDReportDesc_hidkey[] = {
     0x05, 0x0C,        // Usage Page (Consumer)
     0x09, 0x01,        // Usage (Consumer Control)
     0xA1, 0x01,        // Collection (Application)
-    0x85, HIDKEY_REPORT_ID,  //   Report ID (1)
+    0x85, 0x01,        //   Report ID (1)
     0x09, 0xE9,        //   Usage (Volume Increment)
     0x09, 0xEA,        //   Usage (Volume Decrement)
     0x09, 0xCD,        //   Usage (Play/Pause)
@@ -75,18 +72,6 @@ static const u8 sHIDReportDesc_hidkey[] = {
     0xC0,              // End Collection
     // 35 bytes
 };
-
-// consumer key
-#define CONSUMER_VOLUME_INC             0x0001
-#define CONSUMER_VOLUME_DEC             0x0002
-#define CONSUMER_PLAY_PAUSE             0x0004
-#define CONSUMER_MUTE                   0x0008
-#define CONSUMER_SCAN_PREV_TRACK        0x0010
-#define CONSUMER_SCAN_NEXT_TRACK        0x0020
-#define CONSUMER_SCAN_FRAME_FORWARD     0x0040
-#define CONSUMER_SCAN_FRAME_BACK        0x0080
-
-
 
 
 //==========键盘 1
@@ -331,20 +316,9 @@ static const u8 sHIDReportDesc_mouse[] = {
 
 //---------------------------------------------------------------------
 static void dongle_edr_hid_input_handler(u8 *packet, u16 size, u16 channel);
-extern void dongle_custom_hid_rx_handler(void *priv, u8 *buf, u32 len);
 extern int ble_hid_data_send_ext(u8 report_type, u8 report_id, u8 *data, u16 len);
 //---------------------------------------------------------------------
-void dongle_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
-static void dongle_set_soft_poweroff(void)
+void dongle_set_soft_poweroff(void)
 {
     log_info("set_soft_poweroff\n");
     is_app_dongle_active = 1;
@@ -378,18 +352,6 @@ static const char *edr_bd_name_filt[] = {
 static void dongle_timer_handle_test(void)
 {
     log_info("not_bt");
-}
-
-// cdc send test
-static void usb_cdc_send_test()
-{
-#if TCFG_USB_SLAVE_CDC_ENABLE
-    log_info("-send test cdc data-");
-    u8 cdc_test_buf[3] = {0x11, 0x22, 0x33};
-    cdc_write_data(USB0, cdc_test_buf, 3);
-    /* char test_char[] = "cdc test"; */
-    /* cdc_write_data(USB0, test_char, sizeof(test_char)-1); */
-#endif
 }
 
 static const u8 fix_target_address[6] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
@@ -439,37 +401,17 @@ static void dongle_app_start()
     extern void usb_start();
     extern void usb_hid_set_repport_map(const u8 * map, int size);
     extern void usb_hid_set_second_repport_map(const u8 * map, int size);
-    extern void dongle_return_online_list(void);
 
     //配置选择上报PC的描述符
     //first device
-    log_info("register channel 1");
-#if CONFIG_HIDKEY_REPORT_TEST & BIT(0)
-    usb_hid_set_repport_map(sHIDReportDesc_hidkey, sizeof(sHIDReportDesc_hidkey));
-#else
+    /* usb_hid_set_repport_map(sHIDReportDesc_hidkey, sizeof(sHIDReportDesc_hidkey)); */
     usb_hid_set_repport_map(sHIDReportDesc_mouse, sizeof(sHIDReportDesc_mouse));
-#endif
     /* usb_hid_set_repport_map(sHIDReportDesc_keyboard1, sizeof(sHIDReportDesc_keyboard1)); */
 
-#if (CONFIG_BT_GATT_CLIENT_NUM == 2)
     //second device
-    log_info("register channel 2");
-#if CONFIG_HIDKEY_REPORT_TEST & BIT(1)
-    usb_hid_set_second_repport_map(sHIDReportDesc_hidkey, sizeof(sHIDReportDesc_hidkey));
-#else
+    /*usb_hid_set_second_repport_map(sHIDReportDesc_hidkey, sizeof(sHIDReportDesc_hidkey));*/
     usb_hid_set_second_repport_map(sHIDReportDesc_stand_keyboard2, sizeof(sHIDReportDesc_stand_keyboard2));
-#endif
-#endif
-
     usb_start();
-
-#if RCSP_BTMATE_EN
-    dongle_ota_init();
-    custom_hid_set_rx_hook(NULL, dongle_custom_hid_rx_handler);//重注册接收回调到dongle端
-    /* download_buf = malloc(1024); */
-    /* dongle_return_online_list(); */
-    sys_timeout_add(NULL, dongle_return_online_list, 4000);
-#endif
 #endif
 
 }
@@ -523,11 +465,12 @@ int dongle_ble_hid_input_handler(u8 *packet, u16 size)
 {
     /* log_info("ble_hid_data_input:size=%d", size); */
     /* put_buf(packet, size); */
-#if TCFG_PC_ENABLE
+
     putchar('&');
+
+#if TCFG_PC_ENABLE
     return hid_send_data(packet, size);
 #else
-    log_info("chl1 disable!!!\n");
     return 0;
 #endif
 }
@@ -539,10 +482,9 @@ int dongle_second_ble_hid_input_handler(u8 *packet, u16 size)
     /* put_buf(packet, size); */
 
     putchar('#');
-#if TCFG_PC_ENABLE && (CONFIG_BT_GATT_CLIENT_NUM == 2)
+#if TCFG_PC_ENABLE
     return hid_send_second_data(packet, size);
 #else
-    log_info("chl2 disable!!!\n");
     return 0;
 #endif
 }
@@ -602,15 +544,8 @@ static void dongle_key_event_handler(struct sys_event *event)
 
         if (event_type == KEY_EVENT_TRIPLE_CLICK
             && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
-            dongle_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            dongle_set_soft_poweroff();
             return;
-        }
-
-        if (event_type == KEY_EVENT_DOUBLE_CLICK && key_value == TCFG_ADKEY_VALUE0) {
-#if TCFG_USB_SLAVE_CDC_ENABLE
-            log_info(">>>test to cdc send\n");
-            usb_cdc_send_test();
-#endif
         }
 
 #if (USER_SUPPORT_PROFILE_HID ==1)
@@ -620,32 +555,16 @@ static void dongle_key_event_handler(struct sys_event *event)
         }
 #endif
 
-#if TCFG_PC_ENABLE && CONFIG_HIDKEY_REPORT_TEST
+#if TCFG_PC_ENABLE && CONFIG_HID_REPORT_MAP == 0
         if (event_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE0) {
-            u8 packet_buf[3] = {HIDKEY_REPORT_ID, CONSUMER_PLAY_PAUSE & 0x0ff, CONSUMER_PLAY_PAUSE >> 8}; //pp key
-            log_info("key_00");
-#if CONFIG_HIDKEY_REPORT_TEST & BIT(0)
-            log_info("usb channel1 test");
+            u8 packet_buf[3] = {1, 0x04, 0x00};
+            log_info("usb pp test");
             hid_send_data(packet_buf, sizeof(packet_buf));
             os_time_dly(1);
             packet_buf[1] = 0;
             hid_send_data(packet_buf, sizeof(packet_buf));
-#endif
-        }
-
-        if (event_type == KEY_EVENT_CLICK && key_value == TCFG_ADKEY_VALUE1) {
-            u8 packet_buf[3] = {HIDKEY_REPORT_ID, CONSUMER_MUTE & 0x0ff, CONSUMER_MUTE >> 8}; //pp key
-            log_info("key_01");
-#if (CONFIG_HIDKEY_REPORT_TEST & BIT(1)) && (CONFIG_BT_GATT_CLIENT_NUM == 2)
-            log_info("usb channel2 test");
-            hid_send_second_data(packet_buf, sizeof(packet_buf));
-            os_time_dly(1);
-            packet_buf[1] = 0;
-            hid_send_second_data(packet_buf, sizeof(packet_buf));
-#endif
         }
 #endif
-
     }
 }
 
@@ -662,12 +581,6 @@ static int dongle_event_handler(struct application *app, struct sys_event *event
             dongle_bt_connction_status_event_handler(&event->u.bt);
         } else if ((u32)event->arg == SYS_BT_EVENT_TYPE_HCI_STATUS) {
             dongle_bt_hci_event_handler(&event->u.bt);
-#if RCSP_BTMATE_EN
-        } else if ((u32)event->arg == DEVICE_EVENT_FROM_PC) {
-            dongle_pc_event_handler(&event->u.bt);//dongle pc命令回调处理
-        } else if ((u32)event->arg == DEVICE_EVENT_FROM_OTG) {
-            dongle_otg_event_handler(&event->u.bt);//dongle ota升级数据透传
-#endif
         }
 #endif
         return 0;

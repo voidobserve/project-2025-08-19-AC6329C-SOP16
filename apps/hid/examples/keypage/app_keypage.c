@@ -60,7 +60,7 @@ static u16 g_auto_shutdown_timer = 0;
 #define SNIFF_MIN_INTERVALSLOT        16
 #define SNIFF_ATTEMPT_SLOT            2
 #define SNIFF_TIMEOUT_SLOT            1
-#define SNIFF_CHECK_TIMER_PERIOD      200
+#define SNIFF_CHECK_TIMER_PERIOD      100
 #else
 
 #define SNIFF_MODE_TYPE               SNIFF_MODE_DEF
@@ -273,7 +273,6 @@ static const edr_init_cfg_t keypage_edr_config = {
     .page_timeout = 8000,
     .super_timeout = 8000,
     .io_capabilities = 3,
-    .passkey_enable = 0,
     .authentication_req = 2,
     .oob_data = 0,
     .sniff_param = &keypage_sniff_param,
@@ -1050,16 +1049,6 @@ void keypage_coordinate_vm_deal(u8 flag)
     }
 }
 
-void keypage_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
 static void keypage_set_soft_poweroff(void)
 {
     log_info("keypage_set_soft_poweroff\n");
@@ -1117,7 +1106,7 @@ static void keypage_app_start()
 
 #if (TCFG_HID_AUTO_SHUTDOWN_TIME)
     //无操作定时软关机
-    g_auto_shutdown_timer = sys_timeout_add((void *)POWER_EVENT_POWER_SOFTOFF, keypage_power_event_to_user, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
+    g_auto_shutdown_timer = sys_timeout_add(NULL, keypage_set_soft_poweroff, TCFG_HID_AUTO_SHUTDOWN_TIME * 1000);
 #endif
 }
 

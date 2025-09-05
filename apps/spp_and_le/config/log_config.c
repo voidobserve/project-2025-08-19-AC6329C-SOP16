@@ -41,12 +41,6 @@ const char log_tag_const_d_KEY_EVENT_DEAL AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_w_KEY_EVENT_DEAL AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_e_KEY_EVENT_DEAL AT(.LOG_TAG_CONST) = 1;
 
-const char log_tag_const_v_ONLINE_DB AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_i_ONLINE_DB AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_d_ONLINE_DB AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_w_ONLINE_DB AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_e_ONLINE_DB AT(.LOG_TAG_CONST) = 1;
-
 const char log_tag_const_v_APP_IDLE AT(.LOG_TAG_CONST) = 0;
 const char log_tag_const_i_APP_IDLE AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_d_APP_IDLE AT(.LOG_TAG_CONST) = 1;
@@ -175,11 +169,6 @@ const char log_tag_const_d_BEACON AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_w_BEACON AT(.LOG_TAG_CONST) = 1;
 const char log_tag_const_e_BEACON AT(.LOG_TAG_CONST) = 1;
 
-const char log_tag_const_v_ELECTROCAR AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_i_ELECTROCAR AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_d_ELECTROCAR AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_w_ELECTROCAR AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_e_ELECTROCAR AT(.LOG_TAG_CONST) = 1;
 
 const char log_tag_const_v_GATT_COMM AT(.LOG_TAG_CONST) = 0;
 const char log_tag_const_i_GATT_COMM AT(.LOG_TAG_CONST) = 1;
@@ -223,23 +212,7 @@ const char log_tag_const_e_CONN_24G AT(.LOG_TAG_CONST) = 1;
 /* const char log_tag_const_w_ AT(.LOG_TAG_CONST) = 1; */
 /* const char log_tag_const_e_ AT(.LOG_TAG_CONST) = 1; */
 
-const char log_tag_const_v_TUYA AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_i_TUYA AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_d_TUYA AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_w_TUYA AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_e_TUYA AT(.LOG_TAG_CONST) = 1;
 
-const char log_tag_const_v_HILINK AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_i_HILINK AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_d_HILINK AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_w_HILINK AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_e_HILINK AT(.LOG_TAG_CONST) = 1;
-
-const char log_tag_const_v_FINDMY AT(.LOG_TAG_CONST) = 0;
-const char log_tag_const_i_FINDMY AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_d_FINDMY AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_w_FINDMY AT(.LOG_TAG_CONST) = 1;
-const char log_tag_const_e_FINDMY AT(.LOG_TAG_CONST) = 1;
 
 
 

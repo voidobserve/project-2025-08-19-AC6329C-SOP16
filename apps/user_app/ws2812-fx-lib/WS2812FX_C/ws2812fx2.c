@@ -45,17 +45,17 @@ keil MDK 编译器不支持二进制表示，因此首先要实现binary.h文件
 #include <stdlib.h>
 #include <string.h>
 
-#include "led_strip_sys.h"
+
 
 
 static uint16_t _rand16seed;
 static void (*customShow)(void) = NULL;
 uint8_t _running, _triggered;
 static Segment _segments[MAX_NUM_SEGMENTS];                 // array of segments (20 bytes per element)
-static Segment_runtime  _segment_runtimes[MAX_NUM_ACTIVE_SEGMENTS]; // array of segment runtimes (16 bytes per element)
+Segment_runtime  _segment_runtimes[MAX_NUM_ACTIVE_SEGMENTS]; // array of segment runtimes (16 bytes per element)
 static uint8_t _active_segments[MAX_NUM_ACTIVE_SEGMENTS];          // array of active segments (1 bytes per element)
 static uint8_t _segments_len = 0;          // size of _segments array
-static uint8_t _active_segments_len = 0;   // size of _segments_runtime and _active_segments arrays
+uint8_t _active_segments_len = 0;   // size of _segments_runtime and _active_segments arrays
 static uint8_t _num_segments = 0;          // number of configured segments in the _segments array
  Segment* _seg;                      // currently active segment (20 bytes)
  Segment_runtime* _seg_rt;           // currently active segment runtime (16 bytes)
@@ -64,12 +64,6 @@ static uint8_t _num_segments = 0;          // number of configured segments in t
 
 
 
-/**
- * @brief ws2812的初始化
- *
- * @param num_leds 灯珠的数量，一条灯带有10个灯珠，参数就为10
- * @param type 颜色顺序，一般是RGB
- */
 void WS2812FX_init(uint16_t num_leds, uint8_t type) {
   #ifdef MY_DEBUG
   printf("WS2812FX_init\n");
@@ -79,7 +73,7 @@ void WS2812FX_init(uint16_t num_leds, uint8_t type) {
   _segments_len = MAX_NUM_SEGMENTS;
   _active_segments_len = MAX_NUM_ACTIVE_SEGMENTS;
 
-  // create all the segment arrays and init to zeros
+  // create all the segment arrays and init to zeros 
   /* _segments = (Segment *)malloc(_segments_len * sizeof(Segment)); */
  /*  _active_segments = (uint8_t *)malloc(_active_segments_len * sizeof(uint8_t)); */
 /*   _segment_runtimes = (Segment_runtime *)malloc(_active_segments_len * sizeof(Segment_runtime)); */
@@ -92,20 +86,11 @@ void WS2812FX_init(uint16_t num_leds, uint8_t type) {
   Adafruit_NeoPixel_setBrightness(DEFAULT_BRIGHTNESS + 1);
 }
 
-/*
-ws218运行
-配合定时
-*/
-extern u8 ws2811fx_set_cycle;
-extern unsigned long get_syn_time(void);
-void WS2812FX_service()
+
+void WS2812FX_service() 
 {
   if(_running || _triggered) {
-
-    unsigned long now = 0;
-
-    now = millis(); // Be aware, millis() rolls over every 49 days
-
+    unsigned long now = millis(); // Be aware, millis() rolls over every 49 days
     uint8_t doShow = false;
     for(uint8_t i=0; i < _active_segments_len; i++) {
       if(_active_segments[i] != INACTIVE_SEGMENT) {
@@ -113,11 +98,9 @@ void WS2812FX_service()
         _seg_len = (uint16_t)(_seg->stop - _seg->start + 1);
         _seg_rt  = &_segment_runtimes[i];
         CLR_FRAME_CYCLE;
-
         if(now >= _seg_rt->next_time || _triggered) {
-          SET_FRAME;
+          // SET_FRAME;
           doShow = true;
-
           uint16_t delay = _seg->mode();
           _seg_rt->next_time = now + max(delay, SPEED_MIN);
           _seg_rt->counter_mode_call++;
@@ -127,7 +110,8 @@ void WS2812FX_service()
     }
     if(doShow) {
     //  delay(1); // for ESP32 (see https://forums.adafruit.com/viewtopic.php?f=47&t=117327)
-
+      
+      if(delay != 0xffff)
       WS2812FX_show();
     }
     _triggered = false;
@@ -156,11 +140,11 @@ void WS2812FX_setPixelColor_rgb(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void WS2812FX_setPixelColor_rgbw(uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
-  if(IS_GAMMA)
+  if(IS_GAMMA) 
   {
     Adafruit_NeoPixel_setPixelColor_rgbw(n, Adafruit_NeoPixel_gamma8(r), Adafruit_NeoPixel_gamma8(g), Adafruit_NeoPixel_gamma8(b), Adafruit_NeoPixel_gamma8(w));
-  }
-  else
+  } 
+  else 
   {
     Adafruit_NeoPixel_setPixelColor_rgbw(n, r, g, b, w);
   }
@@ -194,12 +178,6 @@ void WS2812FX_start() {
 void WS2812FX_stop() {
   _running = false;
   WS2812FX_strip_off();
-
-}
-
-void WS2812FX_play(void)
-{
-  _running = true;
 }
 
 void WS2812FX_pause() {
@@ -263,6 +241,7 @@ void WS2812FX_setColor_seg(uint8_t seg, uint32_t c) {
 }
 
 void WS2812FX_setColors(uint8_t seg, uint32_t* c) {
+
   for(uint8_t i=0; i<MAX_NUM_COLORS; i++) {
     _segments[seg].colors[i] = c[i];
   }
@@ -534,6 +513,7 @@ void WS2812FX_setSegmentsInactive(void)
 
 void WS2812FX_resetSegmentRuntimes() {
   memset(_segment_runtimes, 0, _active_segments_len * sizeof(Segment_runtime));
+  
 }
 
 void WS2812FX_resetSegmentRuntime(uint8_t seg) {
@@ -613,6 +593,15 @@ uint16_t WS2812FX_random16_lim(uint16_t lim) {
     return r;
 }
 
+// 必须放在WS2812FX_start() 后才生效
+// 设置效果提前输出，提前时间ms
+void set_seg_forward_out(uint8_t s, uint16_t ms)
+{
+  if(s < _active_segments_len)
+  {
+    _segment_runtimes[s].next_time = ms;
+  }
+}
 
 
 

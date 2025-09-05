@@ -33,6 +33,5 @@ enum {
 
 extern APP_VAR app_var;
 
-void app_switch(const char *name, int action);
 
 #endif

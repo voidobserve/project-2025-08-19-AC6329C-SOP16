@@ -63,6 +63,7 @@ extern void ble_standard_dut_test_init(void);
 void btstack_ble_start_before_init(const ble_init_cfg_t *cfg, int param)
 {
     u8 tmp_ble_addr[6];
+    extern u8 Ble_Addr[6];
 
     if (!cfg) {
         cfg = &ble_default_config;
@@ -75,7 +76,7 @@ void btstack_ble_start_before_init(const ble_init_cfg_t *cfg, int param)
         //生成edr对应唯一地址
         lib_make_ble_address(tmp_ble_addr, (void *)bt_get_mac_addr());
     }
-
+    memcpy(Ble_Addr,tmp_ble_addr,6);
     le_controller_set_mac((void *)tmp_ble_addr);
 
     log_info("---ble's address");

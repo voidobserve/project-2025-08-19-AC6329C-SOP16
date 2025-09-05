@@ -34,10 +34,6 @@
 #include "ccm.h"
 #include "cpu.h"
 
-#include "app_config.h"
-
-#if (CONFIG_APP_TUYA)
-
 #define CCM_ENCRYPT 0
 #define CCM_DECRYPT 1
 
@@ -392,4 +388,4 @@ void aes_ccm_test2(void)
 }
 #endif
 
-#endif /* CONFIG_APP_TUYA */
+

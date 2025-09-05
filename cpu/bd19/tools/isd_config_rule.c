@@ -160,7 +160,7 @@ UTRX = PP00; //串口升级[PB00 PB05 PA05]
 RESET = CAT3(CONFIG_RESET_PIN, CONFIG_RESET_TIME, CONFIG_RESET_LEVEL);	//port口_长按时间_有效电平（长按时间有00、01、02、04、08三个值可选，单位为秒，当长按时间为00时，则关闭长按复位功能。）
 
 #ifdef CONFIG_VDDIO_LVD_LEVEL
-VLVD = CONFIG_VDDIO_LVD_LEVEL; //VDDIO_LVD挡位，0: 1.55V   1: 1.70V   2: 1.85V   3: 2.00V   4: 2.15V   5: 2.30V   6: 2.45V   7: 2.60V
+VLVD = CONFIG_VDDIO_LVD_LEVEL; //VDDIO_LVD挡位，0: 1.8V   1: 1.9V   2: 2.0V   3: 2.1V   4: 2.2V   5: 2.3V   6: 2.4V   7: 2.5V
 #endif
 
 #ifdef CONFIG_UPDATE_JUMP_TO_MASK
@@ -268,18 +268,6 @@ EOFFSET = 0; //flash容量超256kbyte 特有配置，是否需要4k*n偏移，�
 #define CONFIG_BURNER_INFO_SIZE		32
 #endif
 
-#ifndef CONFIG_FINDMY_INFO_ADDR
-#define CONFIG_FINDMY_INFO_ADDR	0x7d000
-#endif
-
-#ifndef CONFIG_FINDMY_INFO_LEN
-#define CONFIG_FINDMY_INFO_LEN	0x2000
-#endif
-
-#ifndef CONFIG_FINDMY_INFO_OPT
-#define CONFIG_FINDMY_INFO_OPT	1
-#endif
-
 
 // ########flash空间使用配置区域###############################################
 // #PDCTNAME:    产品名，对应此代码，用于标识产品，升级时可以选择匹配产品名
@@ -297,6 +285,10 @@ EOFFSET = 0; //flash容量超256kbyte 特有配置，是否需要4k*n偏移，�
 // #	2:  下载代码时给指定区域加上保护
 // ############################################################################
 [RESERVED_CONFIG]
+BTIF_ADR = CONFIG_BTIF_ADDR;
+BTIF_LEN = CONFIG_BTIF_LEN;
+BTIF_OPT = CONFIG_BTIF_OPT;
+
 #if (CONFIG_APP_OTA_ENABLE && !CONFIG_DOUBLE_BANK_ENABLE)
 EXIF_ADR = CONFIG_EXIF_ADDR;
 EXIF_LEN = CONFIG_EXIF_LEN;
@@ -360,35 +352,15 @@ ANCIF1_LEN = CONFIG_ANCIF1_LEN;
 ANCIF1_OPT = CONFIG_ANCIF1_OPT;
 #endif
 
-BTIF_ADR = CONFIG_BTIF_ADDR;
-BTIF_LEN = CONFIG_BTIF_LEN;
-BTIF_OPT = CONFIG_BTIF_OPT;
 
-[RESERVED_EXPAND_CONFIG]
-#if CONFIG_FINDMY_INFO_ENABLE && CONFIG_ONLY_GRENERATE_ALIGN_4K_CODE
-FINDMY_ADR = CONFIG_FINDMY_INFO_ADDR;
-FINDMY_LEN = CONFIG_FINDMY_INFO_LEN;
-FINDMY_OPT = CONFIG_FINDMY_INFO_OPT;
-#endif
-
-[BURNER_PASSTHROUGH_CFG]
-FLASH_WRITE_PROTECT = NO
-
-//烧写配置选项
-                      [BURNER_OPTIONS]
-                      GUI_DISABLED = TRUE;
-//LVD电压值要跟烧录器可选的显示值，一模一样，否则会报错不匹配
-LVD = 1.85v;
 
 [BURNER_CONFIG]
 SIZE = CONFIG_BURNER_INFO_SIZE;
 
 [TOOL_CONFIG]
-1TO2_MIN_VER = 2.27.8;//一拖二烧写器最低版本
+1TO2_MIN_VER = 2.26.1;//一拖二烧写器最低版本
 
-1TO8_MIN_VER = 3.1.22;//一拖八烧写器最低版本
-#if CONFIG_FINDMY_INFO_ENABLE
-[FW_ADDITIONAL]
-FILE_LIST = (file = file_authrunFindmyAC632N.tkn: type = 0xec)
-#endif
+1TO8_MIN_VER = 3.1.8;//一拖八烧写器最低版本
+
+
 

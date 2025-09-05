@@ -3,7 +3,6 @@
 
 #include "typedef.h"
 #include "system/event.h"
-#include "btstack_typedef.h"
 
 enum {
     SNIFF_MODE_DEF = 0,

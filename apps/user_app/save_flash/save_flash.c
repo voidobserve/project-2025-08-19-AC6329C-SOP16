@@ -2,13 +2,17 @@
 #include "system/includes.h"
 #include "syscfg_id.h"
 #include "save_flash.h"
+#include "rf433.h"
+
+
 #define     CFG_USER_LED_LEDGTH_DATA    3
 
 const u8 frist_mode[]={0x3D,0x00,0x00,0x0B,0x00,0x01,0x00,0x14,0x00,0x00,0x01,0x03,0xE8,0x03,0xE8}; //第一次上电默认模式
 
 
-extern u8 my_ble_state;
-extern u16 RF433_CODE;
+extern sys_cb_t sys_cb;
+ u8 ble_state ; //默认开启BLE模块
+extern u32 RF433_CODE;
 /*******************************************************************************************************
 **函数名：上电读取FLASH里保存的指令数据
 **输  出：
@@ -31,20 +35,22 @@ void read_flash_device_status_init(void)
     res = syscfg_read(CFG_USER_LED_LEDGTH_DATA,(u8 *)(&save_flash3), sizeof(save_flash_t));
 
 
-    os_time_dly(1);
+    // os_time_dly(1);
 
 
     if(save_flash3.header != 0x55)  //第一次上电
     {
-       
         fc_data_init();
-        my_ble_state = 1;//默认开启BLE模块
+        ble_state = 1;//默认开启BLE模块
     }
     else
     {
+        void fc_debug(void);
+        printf("\n flash_size=%d", sizeof(fc_effect_t));
         memcpy( (u8*)(&fc_effect), (u8*)(&save_flash3.fc_save) , sizeof(fc_effect_t));
-        my_ble_state = save_flash3.sa_ble_state;
-        RF433_CODE = save_flash3.sa_rf433_code;
+        // fc_debug();
+        ble_state = save_flash3.ble_state;
+        RF433_CODE = save_flash3.rf433_code;
     }
 
 
@@ -55,10 +61,11 @@ void read_flash_device_status_init(void)
 // 把用户数据写到区域3
 void save_user_data_area3(void)
 {
+   // printf("\n save_user_data_area3");
     save_flash_t save_data;
     save_data.header = 0x55;
-    save_data.sa_ble_state = my_ble_state;
-    save_data.sa_rf433_code = RF433_CODE;
+    save_data.ble_state = ble_state;
+    save_data.rf433_code = RF433_CODE;
     memcpy((u8*)(&save_data.fc_save) , (u8*)(&fc_effect), sizeof(fc_effect_t));
     syscfg_write(CFG_USER_LED_LEDGTH_DATA, (u8 *)(&save_data), sizeof(save_flash_t));
 

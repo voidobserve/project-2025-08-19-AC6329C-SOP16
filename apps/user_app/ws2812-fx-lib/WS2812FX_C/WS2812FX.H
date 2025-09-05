@@ -56,19 +56,33 @@ typedef char __FlashStringHelper;
 #define MAX_CUSTOM_MODES          8
 
 // some common colors
-#define RED        (uint32_t)0x00FF0000
-#define GREEN      (uint32_t)0x0000FF00
-#define BLUE       (uint32_t)0x000000FF
+#define RED        (uint32_t)0xFF0000
+// #define GREEN      (uint32_t)0x00FF00
+#define GREEN      (uint32_t)0x00F000
+#define BLUE       (uint32_t)0x0000F0
 #define WHITE      (uint32_t)0x00FFFFFF
-#define BLACK      (uint32_t)0x00000000
-#define YELLOW     (uint32_t)0x00FFFF00
-#define CYAN       (uint32_t)0x0000FFFF
-#define MAGENTA    (uint32_t)0x00FF00FF
-#define PURPLE     (uint32_t)0x00400080
-#define ORANGE     (uint32_t)0x00FF3000
-#define PINK       (uint32_t)0x00FF1493
-#define GRAY       (uint32_t)0x00101010
-#define ULTRAWHITE (uint32_t)0xFF000000
+// #define WHITE      (uint32_t)0x4B4B4B
+#define BLACK      (uint32_t)0x000000
+
+#define YELLOW     (uint32_t)0x787800
+#define CYAN       (uint32_t)0x007575
+#define MAGENTA    (uint32_t)0x780078
+
+// #define YELLOW     (uint32_t)0xFFFF00
+// #define CYAN       (uint32_t)0x00FFFF
+// #define MAGENTA    (uint32_t)0xFF00FF
+
+
+// #define PURPLE     (uint32_t)0x400080
+// #define ORANGE     (uint32_t)0xFF3000
+#define PURPLE     (uint32_t)0x400080
+#define ORANGE     (uint32_t)0xC82500   //ok
+
+// #define PINK       (uint32_t)0xFF1493
+#define PINK       (uint32_t)0x960b56
+
+#define GRAY       (uint32_t)0x101010
+#define ULTRAWHITE (uint32_t)0xFFFFFFFF
 #define DIM(c)     (uint32_t)((c >> 2) & 0x3f3f3f3f) // color at 25% intensity
 #define DARK(c)    (uint32_t)((c >> 4) & 0x0f0f0f0f) // color at  6% intensity
 
@@ -80,9 +94,9 @@ typedef char __FlashStringHelper;
 // bits 1-2: size
 // bits   0: TBD
 #define NO_OPTIONS   (uint8_t)B00000000
-#define REVERSE      (uint8_t)B10000000                         //控制正反方向
-#define IS_REVERSE   ((_seg->options & REVERSE) == REVERSE)     //判断是反方向
-#define FADE_XFAST   (uint8_t)B00010000                         //FADE系列，拖尾（长度）的数量，搭配 WS2812FX_fade_out(); 使用
+#define REVERSE      (uint8_t)B10000000
+#define IS_REVERSE   ((_seg->options & REVERSE) == REVERSE)
+#define FADE_XFAST   (uint8_t)B00010000
 #define FADE_FAST    (uint8_t)B00100000
 #define FADE_MEDIUM  (uint8_t)B00110000
 #define FADE_SLOW    (uint8_t)B01000000
@@ -92,8 +106,8 @@ typedef char __FlashStringHelper;
 #define FADE_RATE    ((_seg->options >> 4) & 7)
 #define GAMMA        (uint8_t)B00001000
 #define IS_GAMMA     ((_seg->options & GAMMA) == GAMMA)
-#define SIZE_SMALL   (uint8_t)B00000000 //1                     // SIZE 系列  特别的效果才用上    
-#define SIZE_MEDIUM  (uint8_t)B00000010 //3                      //3个灯为一组
+#define SIZE_SMALL   (uint8_t)B00000000 //1
+#define SIZE_MEDIUM  (uint8_t)B00000010 //3
 #define SIZE_LARGE   (uint8_t)B00000100 //5
 #define SIZE_XLARGE  (uint8_t)B00000110 //7
 #define SIZE_OPTION  ((_seg->options >> 1) & 3)
@@ -246,6 +260,7 @@ Segment_runtime* getSegmentRuntime_seg(uint8_t);
 
 Segment_runtime* getSegmentRuntimes(void);
 
+void set_seg_forward_out(uint8_t s, uint16_t ms);
 
 
 

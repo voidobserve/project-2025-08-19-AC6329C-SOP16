@@ -38,8 +38,7 @@
 #define   BLE_PROFILE_DATA
 #include "le_common.h"
 #include "at.h"
-#include "ble_at_char_com.h"
-#include "ble_at_char_profile.h"
+#include "le_at_char_com.h"
 
 #include "rcsp_bluetooth.h"
 #include "JL_rcsp_api.h"
@@ -47,10 +46,10 @@
 
 #if  CONFIG_APP_AT_CHAR_COM
 
-#if LE_DEBUG_PRINT_EN
+#if 1
 extern void printf_buf(u8 *buf, u32 len);
 //#define log_info          printf
-#define log_info(x, ...)    printf("\n[LE_AT_CHAR_COM]" x " ", ## __VA_ARGS__)
+#define log_info(x, ...)    printf("\n[LE_AT_COM]" x " ", ## __VA_ARGS__)
 
 #define log_info_hexdump  printf_buf
 #else
@@ -69,7 +68,7 @@ extern void printf_buf(u8 *buf, u32 len);
 /* #include "debug.h" */
 
 //------
-#define ATT_LOCAL_MTU_SIZE        (247)                   //note: need >= 20
+#define ATT_LOCAL_MTU_SIZE        (128)                   //note: need >= 20
 #define ATT_SEND_CBUF_SIZE        (512*2)                   //note: need >= 20,缓存大小，可修改
 #define ATT_RAM_BUFSIZE           (ATT_CTRL_BLOCK_SIZE + ATT_LOCAL_MTU_SIZE + ATT_SEND_CBUF_SIZE)                   //note:
 static u8 att_ram_buffer[ATT_RAM_BUFSIZE] __attribute__((aligned(4)));
@@ -92,12 +91,12 @@ static uint8_t sm_pair_mode;
 //连接参数设置
 static const uint8_t connection_update_enable = 0; ///0--disable, 1--enable
 static uint8_t connection_update_cnt = 0; //
-void ble_test_auto_adv(u8 en);
-
 static const struct conn_update_param_t connection_param_table[] = {
-    {16, 24, 10, 600},//11
-    {12, 28, 10, 600},//3.7
-    {8,  20, 10, 600},
+    {16, 24, 0, 600},//11
+    {12, 28, 0, 600},//3.7
+    {8,  20, 0, 600},
+    {10, 10, 0, 600},//3.7
+    /* {12, 24, 30, 600},//3.05 */
 };
 #define CONN_PARAM_TABLE_CNT      (sizeof(connection_param_table)/sizeof(struct conn_update_param_t))
 
@@ -121,7 +120,7 @@ static char gap_device_name[BT_NAME_LEN_MAX] = "BR2262e-s";
 static u8 gap_device_name_len = 0;
 static u8 ble_work_state = 0;
 static u8 adv_ctrl_en;
-static u8 auto_adv_enable = 0;    //set 1,默认广播配置,上电&断开后开启广播
+static u8 auto_adv_enable = 0;    //默认广播配置
 static u16 adv_interval_value = ADV_INTERVAL_MIN;
 
 static void (*app_recieve_callback)(void *priv, void *buf, u16 len) = NULL;
@@ -320,11 +319,9 @@ static void cbk_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
     u8 status;
     u8 peer_addr[6] = {0};
 
-#if CONFIG_BT_GATT_CLIENT_NUM
     if (client_cbk_packet_handler(packet_type, channel, packet, size)) {
         return;
     }
-#endif
 
     switch (packet_type) {
     case HCI_EVENT_PACKET:
@@ -352,9 +349,8 @@ static void cbk_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
                 con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
                 log_info("HCI_SUBEVENT_LE_CONNECTION_COMPLETE: %0x\n", con_handle);
                 hci_subevent_le_connection_complete_get_peer_address(packet, peer_addr);
-                multi_att_ccc_config_init();
-
                 black_list_check(1, peer_addr);
+
                 connection_update_complete_success(packet + 8);
                 server_profile_start(con_handle);
 #if RCSP_BTMATE_EN
@@ -480,14 +476,14 @@ static uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t a
         if (buffer) {
             memcpy(buffer, &gap_device_name[offset], buffer_size);
             att_value_len = buffer_size;
-            log_info("------read gap_name: %s \n", gap_device_name);
+            log_info("\n------read gap_name: %s \n", gap_device_name);
         }
         break;
-    case ATT_CHARACTERISTIC_2a05_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE:
-    case ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE:
+
+    case ATT_CHARACTERISTIC_ff01_01_CLIENT_CONFIGURATION_HANDLE:
+    case ATT_CHARACTERISTIC_ff03_01_CLIENT_CONFIGURATION_HANDLE:
         if (buffer) {
-            buffer[0] = multi_att_get_ccc_config(con_handle, handle);
+            buffer[0] = att_get_ccc_config(handle);
             buffer[1] = 0;
         }
         att_value_len = 2;
@@ -523,7 +519,7 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
 
     switch (handle) {
 
-    case ATT_CHARACTERISTIC_ae01_01_VALUE_HANDLE:
+    case ATT_CHARACTERISTIC_ff02_01_VALUE_HANDLE:
         /* printf("\n-ae_rx(%d):", buffer_size); */
         /* printf_buf(buffer, buffer_size); */
 
@@ -535,16 +531,24 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
         /* } */
         break;
 
-    case ATT_CHARACTERISTIC_ae02_01_CLIENT_CONFIGURATION_HANDLE:
+    case ATT_CHARACTERISTIC_2a00_01_VALUE_HANDLE:
+        break;
+
+    case ATT_CHARACTERISTIC_ff01_01_CLIENT_CONFIGURATION_HANDLE:
         at_send_string("OK");
         at_send_connected(cur_dev_cid);
         set_ble_work_state(BLE_ST_NOTIFY_IDICATE);
         check_connetion_updata_deal();
-    /* send_request_connect_parameter(3); */
+        log_info("\n------write ccc:%04x,%02x\n", handle, buffer[0]);
+        att_set_ccc_config(handle, buffer[0]);
+        send_request_connect_parameter(3);
+        break;
 
-    case ATT_CHARACTERISTIC_ae05_01_CLIENT_CONFIGURATION_HANDLE:
-        log_info("------write ccc:%04x,%02x\n", handle, buffer[0]);
-        multi_att_set_ccc_config(con_handle, handle, buffer[0]);
+    case ATT_CHARACTERISTIC_ff03_01_CLIENT_CONFIGURATION_HANDLE:
+        set_ble_work_state(BLE_ST_NOTIFY_IDICATE);
+        check_connetion_updata_deal();
+        log_info("\n------write ccc:%04x,%02x\n", handle, buffer[0]);
+        att_set_ccc_config(handle, buffer[0]);
         break;
 
 #if RCSP_BTMATE_EN
@@ -562,9 +566,8 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
         /* } */
         check_connetion_updata_deal();
         log_info("\n------write ccc:%04x,%02x\n", handle, buffer[0]);
-        multi_att_set_ccc_config(con_handle, handle, buffer[0]);
+        att_set_ccc_config(handle, buffer[0]);
         break;
-
 #if RCSP_BTMATE_EN
     case ATT_CHARACTERISTIC_ae01_02_VALUE_HANDLE:
         printf("rcsp_read:%x\n", buffer_size);
@@ -589,7 +592,7 @@ static int app_send_user_data(u16 handle, u8 *data, u16 len, u8 handle_type)
         return APP_BLE_OPERATION_ERROR;
     }
 
-    if (!multi_att_get_ccc_config(con_handle, handle + 1)) {
+    if (!att_get_ccc_config(handle + 1)) {
         log_info("fail,no write ccc!!!,%04x\n", handle + 1);
         return APP_BLE_NO_WRITE_CCC;
     }
@@ -750,21 +753,18 @@ void ble_profile_init(void)
 #endif
     }
 
-#if CONFIG_BT_GATT_SERVER_NUM
     /* setup ATT server */
-    att_server_init(at_char_profile_data, att_read_callback, att_write_callback);
+    att_server_init(profile_data, att_read_callback, att_write_callback);
     att_server_register_packet_handler(cbk_packet_handler);
     /* gatt_client_register_packet_handler(packet_cbk); */
-#endif
+
     // register for HCI events
     hci_event_callback_set(&cbk_packet_handler);
     /* ble_l2cap_register_packet_handler(packet_cbk); */
     /* sm_event_packet_handler_register(packet_cbk); */
     le_l2cap_register_packet_handler(&cbk_packet_handler);
 
-#if CONFIG_BT_GATT_CLIENT_NUM
     ble_client_profile_init();
-#endif
 
     ble_vendor_set_default_att_mtu(ATT_LOCAL_MTU_SIZE);
 }
@@ -892,8 +892,8 @@ u8 *ble_get_adv_data_ptr(u16 *len)
 
 u8 *ble_get_gatt_profile_data(u16 *len)
 {
-    *len = sizeof(at_char_profile_data);
-    return (u8 *)at_char_profile_data;
+    *len = sizeof(profile_data);
+    return (u8 *)profile_data;
 }
 
 
@@ -930,7 +930,7 @@ extern void bt_ble_client_init(void);
 extern void bt_ble_client_exit(void);
 
 //------------------------new
-/* extern char const device_name_default[]; */
+extern char const device_name_default[];
 void bt_ble_init(void)
 {
     log_info("***** ble_init******\n");
@@ -938,20 +938,14 @@ void bt_ble_init(void)
 
     ble_op_multi_att_send_init(att_ram_buffer, ATT_RAM_BUFSIZE, ATT_LOCAL_MTU_SIZE);
 
-    /* gap_device_name_len = strlen(device_name_default); */
-    /* memcpy(gap_device_name, device_name_default, gap_device_name_len + 1); */
-
-#if CONFIG_BT_GATT_SERVER_NUM
-    ble_test_auto_adv(0);
-    set_ble_work_state(BLE_ST_INIT_OK);
-    ble_module_enable(1);
-#endif
-
+    gap_device_name_len = strlen(device_name_default);
+    memcpy(gap_device_name, device_name_default, gap_device_name_len + 1);
     log_info("ble name(%d): %s \n", gap_device_name_len, gap_device_name);
 
-#if CONFIG_BT_GATT_CLIENT_NUM
+    set_ble_work_state(BLE_ST_INIT_OK);
+
+    ble_module_enable(1);
     bt_ble_client_init();
-#endif
 }
 
 void bt_ble_exit(void)
@@ -959,9 +953,7 @@ void bt_ble_exit(void)
     log_info("***** ble_exit******\n");
 
     ble_module_enable(0);
-#if CONFIG_BT_GATT_CLIENT_NUM
     bt_ble_client_exit();
-#endif
 }
 
 void ble_app_disconnect(void)
@@ -1168,7 +1160,7 @@ u8 le_att_server_state(void)
 int le_att_server_send_data(u8 cid, u8 *packet, u16 size)
 {
     if (cid == cur_dev_cid) {
-        return app_send_user_data(ATT_CHARACTERISTIC_ae02_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
+        return app_send_user_data(ATT_CHARACTERISTIC_ff01_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
     }
     return 0;
 }
@@ -1177,7 +1169,7 @@ int le_att_server_send_data(u8 cid, u8 *packet, u16 size)
 int le_att_server_send_ctrl(u8 cid, u8 *packet, u16 size)
 {
     if (cid == cur_dev_cid) {
-        return app_send_user_data(ATT_CHARACTERISTIC_ae05_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
+        return app_send_user_data(ATT_CHARACTERISTIC_ff03_01_VALUE_HANDLE, packet, size, ATT_OP_AUTO_READ_CCC);
     }
     return 0;
 }
@@ -1199,7 +1191,6 @@ void ble_test_auto_adv(u8 en)
     ble_at_set_adv_data(test_adv_data, sizeof(test_adv_data));
     ble_at_set_rsp_data(test_rsp_data, sizeof(test_rsp_data));
     /* ble_at_set_rsp_data(0,0); */
-    ble_at_set_name(&test_rsp_data[2], 11);
     ble_at_adv_enable(en);
 }
 

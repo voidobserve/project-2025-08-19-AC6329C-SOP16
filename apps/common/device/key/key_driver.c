@@ -11,6 +11,7 @@
 #include "app_config.h"
 #include "rdec_key.h"
 #include "tent600_key.h"
+#include "rf433.h"
 #if TCFG_KEY_TONE_EN
 #include "tone_player.h"
 #endif
@@ -28,12 +29,12 @@
 //#define LOG_CLI_ENABLE
 #include "debug.h"
 
-#define KEY_EVENT_CLICK_ONLY_SUPPORT	0 	//是否支持某些按键只响应单击事件
+#define KEY_EVENT_CLICK_ONLY_SUPPORT	1 	//是否支持某些按键只响应单击事件
 
 
 #if TCFG_SPI_LCD_ENABLE
 #ifndef ALL_KEY_EVENT_CLICK_ONLY
-#define ALL_KEY_EVENT_CLICK_ONLY	0 	//是否全部按键只响应单击事件
+#define ALL_KEY_EVENT_CLICK_ONLY	1 	//是否全部按键只响应单击事件
 #endif
 #else
 #ifndef ALL_KEY_EVENT_CLICK_ONLY
@@ -79,54 +80,6 @@ void clear_key_poweron_flag(void)
     key_poweron_flag = 0;
 }
 
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-static u8 key_scan_flag = 0, en_key_cnt = 0, en_key_cnt_flag = 1, nonsrc_wakeup_flag = 0, save_notify_flag = 0, key_wk_send_flag = 0;
-struct sys_event e_tmp;
-//=======================================================//
-// 清除保存的key_notify
-//=======================================================//
-void clear_save_key_notify(void)
-{
-    save_notify_flag = 0;
-    memset(&e_tmp, 0, sizeof(struct sys_event));
-}
-//=======================================================//
-// 设置软关机按键唤醒补充发键标志位
-//=======================================================//
-void set_key_wakeup_send_flag(u8 flag)
-{
-    key_wk_send_flag = flag;
-    if (save_notify_flag) {
-        sys_event_notify(&e_tmp);
-        clear_save_key_notify();
-    }
-}
-
-//=======================================================//
-// 获取软关机按键唤醒补充发键标志位
-//=======================================================//
-u8 get_key_wakeup_send_flag(void)
-{
-    return key_wk_send_flag;
-}
-
-//=======================================================//
-// 保存未初始化按键消息前推送的按键notify
-//=======================================================//
-void save_wakeup_key_notify(struct sys_event *event)
-{
-    save_notify_flag = 1;
-
-    e_tmp.type = event->type;
-    e_tmp.arg  = event->arg;
-    e_tmp.u.key.init  = event->u.key.init;
-    e_tmp.u.key.type  = event->u.key.type;
-    e_tmp.u.key.event = event->u.key.event;
-    e_tmp.u.key.value = event->u.key.value;
-    e_tmp.u.key.tmr   = event->u.key.tmr;
-}
-#endif
-
 //=======================================================//
 // 按键扫描函数: 扫描所有注册的按键驱动
 //=======================================================//
@@ -147,49 +100,9 @@ static void key_driver_scan(void *_scan_para)
     /* } */
 
     cur_key_value = scan_para->get_value();
-
     /* if (cur_key_value != NO_KEY) { */
     /*     printf(">>>cur_key_value: %d\n", cur_key_value); */
     /* } */
-
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-    u8 wkup_src = get_wakeup_pnd();
-
-    //按键唤醒后若未按下第二击，推出单击事件
-    //key_driver初始化后未扫描到按键
-    if (key_wk_send_flag && key_scan_flag == 0) {
-        key_scan_flag = 1;
-        //记住唤醒源——识别NO_KEY时的键值
-        if (cur_key_value == NO_KEY) {
-            if (wkup_src == TCFG_WAKEUP_PORT_POWER_SRC) { //唤醒口port1
-                key_value = TCFG_IOKEY_POWER_ONE_PORT_VALUE;
-            } else if (wkup_src == TCFG_WAKEUP_PORT_PREV_SRC) { //唤醒口port2
-                key_value = TCFG_IOKEY_PREV_ONE_PORT_VALUE;
-            } else if (wkup_src == TCFG_WAKEUP_PORT_NEXT_SRC) { //唤醒口port3
-                key_value = TCFG_IOKEY_NEXT_ONE_PORT_VALUE;
-            } else {
-                nonsrc_wakeup_flag = 1;
-                printf("wakeup source err is 0x%x !!!", wkup_src);
-                return;
-            }
-            key_event = KEY_EVENT_CLICK;  //单击
-            goto _notify;
-        }
-        //初始化后扫描到了按键，但是未满足key_driver的单击事件推出，补充推出消息
-    } else if (en_key_cnt && en_key_cnt <= (scan_para->filter_time + 1) && key_scan_flag == 1 && en_key_cnt_flag == 0) {
-        en_key_cnt = 0;
-        key_scan_flag = 0;
-    }
-
-    if (cur_key_value == NO_KEY) {
-        en_key_cnt_flag = 0;
-    } else {
-        key_scan_flag = 1;
-        if (en_key_cnt_flag) {
-            en_key_cnt++;
-        }
-    }
-#endif
 
     if (cur_key_value != NO_KEY) {
         is_key_active = 35;      //35*10Ms
@@ -213,8 +126,6 @@ static void key_driver_scan(void *_scan_para)
 //===== 按键消抖结束, 开始判断按键类型(单击, 双击, 长按, 多击, HOLD, (长按/HOLD)抬起)
     if (cur_key_value != scan_para->last_key) {
         if (cur_key_value == NO_KEY) {  //cur_key = NO_KEY; last_key = valid_key -> 按键被抬起
-        
-
 
 #if MOUSE_KEY_SCAN_MODE
             /* if (scan_para->press_cnt >= scan_para->long_time) {  //长按/HOLD状态之后被按键抬起; */
@@ -223,12 +134,7 @@ static void key_driver_scan(void *_scan_para)
             goto _notify;  	//发送抬起消息
             /* } */
 #else
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-            if (scan_para->press_cnt >= (scan_para->long_time - TCFG_LONGKEY_SUPPLEMENT_TIME))  //长按/HOLD状态之后被按键抬起, 补充长按时间;
-#else
-            if (scan_para->press_cnt >= scan_para->long_time)  //长按/HOLD状态之后被按键抬起;
-#endif
-            {
+            if (scan_para->press_cnt >= scan_para->long_time) {  //长按/HOLD状态之后被按键抬起;
                 key_event = KEY_EVENT_UP;
                 key_value = scan_para->last_key;
                 goto _notify;  	//发送抬起消息
@@ -239,15 +145,7 @@ static void key_driver_scan(void *_scan_para)
         } else {  //cur_key = valid_key, last_key = NO_KEY -> 按键被按下
             scan_para->press_cnt = 1;  //用于判断long和hold事件的计数器重新开始计时;
             if (cur_key_value != scan_para->notify_value) {  //第一次单击/连击时按下的是不同按键, 单击次数重新开始计数
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-                if ((en_key_cnt > scan_para->filter_time && en_key_cnt < scan_para->long_time) || key_wk_send_flag || nonsrc_wakeup_flag) {
-                    scan_para->click_cnt = 1;
-                } else {
-                    scan_para->click_cnt = 2;
-                }
-#else
                 scan_para->click_cnt = 1;
-#endif
                 scan_para->notify_value = cur_key_value;
             } else {
                 scan_para->click_cnt++;  //单击次数累加
@@ -296,13 +194,7 @@ static void key_driver_scan(void *_scan_para)
             }
         } else {  //last_key = valid_key; cur_key = valid_key, press_cnt累加用于判断long和hold
             scan_para->press_cnt++;
-           
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-            if (scan_para->press_cnt == (scan_para->long_time - TCFG_LONGKEY_SUPPLEMENT_TIME))
-#else
-            if (scan_para->press_cnt == scan_para->long_time)
-#endif
-            {
+            if (scan_para->press_cnt == scan_para->long_time) {
                 key_event = KEY_EVENT_LONG;
             } else if (scan_para->press_cnt == scan_para->hold_time) {
                 key_event = KEY_EVENT_HOLD;
@@ -315,8 +207,6 @@ static void key_driver_scan(void *_scan_para)
             goto _notify;
         }
     }
-
-
 
 _notify:
 #if TCFG_IRSENSOR_ENABLE
@@ -337,9 +227,7 @@ _notify:
     scan_para->notify_value = NO_KEY;
 
     e.arg  = (void *)DEVICE_EVENT_FROM_KEY;
-
-    // printf("scan_para->press_cnt = %d",scan_para->press_cnt);
-    // printf("key_value: 0x%x, event: %d, key_poweron_flag: %d\n", key_value, key_event, key_poweron_flag); 
+    /* printf("key_value: 0x%x, event: %d, key_poweron_flag: %d\n", key_value, key_event, key_poweron_flag); */
     if (key_poweron_flag) {
         if (key_event == KEY_EVENT_UP) {
             clear_key_poweron_flag();
@@ -348,17 +236,7 @@ _notify:
         return;
     }
     if (key_event_remap(&e)) {
-#if TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE
-        if (key_wk_send_flag) {
-            sys_event_notify(&e);
-        } else {
-            save_wakeup_key_notify(&e);
-        }
-        nonsrc_wakeup_flag = 0;
-#else
         sys_event_notify(&e);
-#endif
-
 #if TCFG_KEY_TONE_EN
         audio_key_tone_play();
 #endif
@@ -368,7 +246,6 @@ _scan_end:
     return;
 }
 
-#include "rf24g_app.h"
 
 //wakeup callback
 void key_active_set(u8 port)
@@ -385,15 +262,16 @@ void key_active_set(u8 port)
 int key_driver_init(void)
 {
     int err;
+    printf("\n key_driver_init +++++++++++");
 
-#if TCFG_RF24GKEY_ENABLE
-    extern void RF24G_Key_Handle(void);
+//2.4G按键
+// #if TCFG_RF24GKEY_ENABLE
+   #if 1
     extern struct key_driver_para rf24g_scan_para;
-    extern struct RF24G_PARA is_rf24g_;
     sys_s_hi_timer_add((void *)&rf24g_scan_para, key_driver_scan, rf24g_scan_para.scan_time); //注册按键扫描定时器
-    sys_s_hi_timer_add(NULL, RF24G_Key_Handle, is_rf24g_._sacn_t); //注册按键扫描定时器
-
+ printf("2.4Gkey drive");
 #endif 
+
 
 #if TCFG_IOKEY_ENABLE
     extern const struct iokey_platform_data iokey_data;
@@ -438,6 +316,12 @@ int key_driver_init(void)
         sys_s_hi_timer_add((void *)&irkey_scan_para, key_driver_scan, irkey_scan_para.scan_time); //注册按键扫描定时器
     }
 #endif
+
+#if 0
+    extern const struct key_driver_para rf_scan_para;
+    sys_s_hi_timer_add((void *)&rf_scan_para, key_driver_scan, rf_scan_para.scan_time); //注册按键扫描定时器
+#endif
+
 
 #if TCFG_TOUCH_KEY_ENABLE
     extern const struct touch_key_platform_data touch_key_data;
@@ -513,12 +397,4 @@ REGISTER_LP_TARGET(key_lp_target) = {
     .is_idle = key_idle_query,
 };
 #endif /* #if !TCFG_LP_TOUCH_KEY_ENABLE */
-
-#if (TCFG_SOFTOFF_WAKEUP_KEY_DRIVER_ENABLE && TCFG_IOKEY_ENABLE)
-//默认0，按键消息使能后置1,避免(软关机唤醒——发送按键消息)这段时间进入睡眠状态
-REGISTER_LP_TARGET(softoff_wake_key) = {
-    .name = "softoff_wake_key",
-    .is_idle = get_key_wakeup_send_flag,
-};
-#endif
 

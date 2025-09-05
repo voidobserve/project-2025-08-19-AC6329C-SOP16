@@ -15,22 +15,20 @@ static void (*ledc1_isr_cbfun)(void) = NULL;
 static OS_SEM ledc0_sem;
 static OS_SEM ledc1_sem;
 
-static unsigned char tran_finish = 1;
+
 ___interrupt
 void ledc_isr(void)
 {
     if (JL_LEDC0->CON & BIT(7)) {
         JL_LEDC0->CON |= BIT(6);
-        // os_sem_post(&ledc0_sem);
-        tran_finish = 1;
+        os_sem_post(&ledc0_sem);
         if (ledc0_isr_cbfun) {
             ledc0_isr_cbfun();
         }
     }
     if (JL_LEDC1->CON & BIT(7)) {
         JL_LEDC1->CON |= BIT(6);
-        // os_sem_post(&ledc1_sem);
-        tran_finish = 1;
+        os_sem_post(&ledc1_sem);
         if (ledc1_isr_cbfun) {
             ledc1_isr_cbfun();
         }
@@ -55,8 +53,8 @@ void ledc_init(const struct ledc_platform_data *arg)
 
     JL_LEDCx[arg->index]->CON = BIT(6);
 
-    // os_sem_create(&ledc0_sem, 1);
-    // os_sem_create(&ledc1_sem, 1);
+    os_sem_create(&ledc0_sem, 1);
+    os_sem_create(&ledc1_sem, 1);
     request_irq(16, 1, ledc_isr, 0);
     if (arg->cbfun) {
         if (arg->index == 0) {
@@ -113,20 +111,14 @@ void ledc_send_rgbbuf(u8 index, u8 *rgbbuf, u32 led_num, u16 again_cnt)
 
 void ledc_send_rgbbuf_isr(u8 index, u8 *rgbbuf, u32 led_num, u16 again_cnt)
 {
- 
     if (!led_num) {
         return;
     }
-    if(tran_finish == 0)    //未发送完成
-    {
-        return;
+    if (index == 0) {
+        os_sem_pend(&ledc0_sem, 0);
+    } else {
+        os_sem_pend(&ledc1_sem, 0);
     }
-    // if (index == 0) {
-    //     os_sem_pend(&ledc0_sem, 0);
-    // } else {
-    //     os_sem_pend(&ledc1_sem, 0);
-    // }
-    tran_finish = 0;
     JL_LEDCx[index]->ADR = (u32)rgbbuf;
     JL_LEDCx[index]->FD = led_num * 3 * 8;
     JL_LEDCx[index]->LP = again_cnt;

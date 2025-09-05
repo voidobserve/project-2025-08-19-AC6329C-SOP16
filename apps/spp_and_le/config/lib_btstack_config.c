@@ -33,12 +33,8 @@ const int CONFIG_BTSTACK_SUPPORT_AAC    = 1;
 const int CONFIG_BTSTACK_SUPPORT_AAC    = 0;
 #endif
 
-#if SNIFF_MODE_RESET_ANCHOR
 //协议栈接收到命令是否自动退出sniff
-const int config_btstask_auto_exit_sniff = 0;
-#else
 const int config_btstask_auto_exit_sniff = 1;
-#endif
 
 
 #if SMART_BOX_EN
@@ -70,19 +66,6 @@ const int config_le_sm_support_enable = 0; //是否支持加密配对
 const int config_le_gatt_server_num = 0;   //支持server角色个数
 const int config_le_gatt_client_num = 0;   //支持client角色个数
 #endif
-
-/*config_le_sm_sub_sc_enable: SC加密模式使能,need config_le_sm_support_enable = 1*/
-const int config_le_sm_sub_sc_enable = CONFIG_BT_SM_SUPPORT_ENABLE & 0;//
-
-const int config_le_sm_sub_sc_bridge_edr_enable = 0; /*default 0*/
-
-
-/*
-   u8 l2cap_debug_enable = 0xf0;
-   u8 rfcomm_debug_enable = 0xf;
-   u8 profile_debug_enable = 0xff;
-   u8 ble_debug_enable    = 0xff;
- */
 
 
 

@@ -84,41 +84,8 @@ static const u8 sdp_pnp_service_data_hid[] = {
     0x72, 0x76, 0x65, 0x72, 0x09, 0x01, 0x01, 0x25, 0x08, 0x4B, 0x65, 0x79, 0x62, 0x6F, 0x61, 0x72,
     0x64, 0x09, 0x02, 0x00, 0x09, 0x01, 0x03, 0x09, 0x02, 0x01, 0x09, PNP_VID >> 8, PNP_VID & 0xFF, 0x09, 0x02, 0x02,
     0x09, PNP_PID >> 8, PNP_PID & 0xFF, 0x09, 0x02, 0x03, 0x09, PNP_PID_VERSION >> 8, PNP_PID_VERSION & 0xFF, 0x09, 0x02, 0x04, 0x28, 0x01, 0x09, 0x02,
-    0x05, 0x09, PNP_VID_SOURCE >> 8, PNP_VID_SOURCE & 0xFF, 0x00, 0x00, 0x00
+    0x05, 0x09, 0x00, PNP_VID_SOURCE >> 8, PNP_VID_SOURCE & 0xFF, 0x00, 0x00
 };
-
-/*重定义下面hid信息结构，信息用于提供给库里面接口SDP生成hid_service服务使用*/
-/*用到结构体的两个接口:sdp_create_diy_device_ID_service 和 sdp_create_diy_hid_service*/
-static const hid_sdp_info_t hid_sdp_info_config = {
-    .vid_private = PNP_VID,
-    .pid_private = PNP_PID,
-    .ver_private = PNP_PID_VERSION,
-
-    .sub_class           = 0x80,
-    .country_code        = 0x21,
-    .virtual_cable       = 0x01,
-    .reconnect_initiate  = 0x01,
-    .sdp_disable         = 0x00,
-    .battery_power       = 0x01,
-    .remote_wake         = 0x01,
-    .normally_connectable = 0x01,
-    .boot_device         = 0x01,
-    .version             = 0x0100,
-    .parser_version      = 0x0111,
-    .profile_version     = 0x0100,
-    .supervision_timeout = 0x1f40,
-    .language            = 0x0409,
-    .bt_string_offset    = 0x0100,
-    .descriptor_len      = 0,
-    .descriptor          = NULL,
-    .service_name        = "JL_HID",
-    .service_description = "hid key",
-    .provide_name        = "JIELI",
-    .sdp_request_respone_callback = NULL,
-    .extra_buf              = NULL,
-    .extra_len              = 0,
-};
-
 
 #define NEW_SDP_PNP_DATA_VER     1  //for 兼容性
 
@@ -150,32 +117,18 @@ SDP_RECORD_HANDLER_REGISTER(hid_sdp_record_item) = {
 };
 #endif
 
-#if (USER_SUPPORT_PROFILE_MAP==1)
-extern const u8 sdp_map_mce_service_data[];
-u8 map_profile_support = 1;
-SDP_RECORD_HANDLER_REGISTER(map_sdp_record_item) = {
-    .service_record = (u8 *)sdp_map_mce_service_data,
-    .service_record_handle = 0x00010009,
-};
-#endif
-
 #if (USER_SUPPORT_PROFILE_HFP==1)
 u8 hfp_profile_support = 1;
-const u8 more_hfp_cmd_support = 1;
 SDP_RECORD_HANDLER_REGISTER(hfp_sdp_record_item) = {
     .service_record = (u8 *)sdp_hfp_service_data,
     .service_record_handle = 0x00010003,
 };
-#else
-const u8 more_hfp_cmd_support = 0;
 #endif
 
 void hid_sdp_init(const u8 *hid_descriptor, u16 size)
 {
 #if (USER_SUPPORT_PROFILE_HID==1)
     int real_size;
-    /*reset info config,在生成sdp数组接口前配置*/
-    sdp_diy_set_config_hid_info(&hid_sdp_info_config);
 
 #if (NEW_SDP_PNP_DATA_VER == 0)
     real_size = sdp_create_diy_device_ID_service(sdp_make_pnp_service_data, sizeof(sdp_make_pnp_service_data));
@@ -283,9 +236,9 @@ u8 *get_profile_pool_addr(void)
     return NULL;
 }
 
-
 const u8 a2dp_mutual_support = 0;
 const u8 more_addr_reconnect_support = 0;
+const u8 more_hfp_cmd_support = 0;
 const u8 more_avctp_cmd_support = 0;
 const u8 hci_inquiry_support = 0;
 const u8 btstack_emitter_support  = 0;  /*定义用于优化代码编译*/

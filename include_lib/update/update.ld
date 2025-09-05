@@ -7,7 +7,6 @@ SECTIONS
         update_data_start = .;
 
         update_data_end = .;
-		. = ALIGN(4);
     } > ram0
 
     .bss (NOLOAD) :ALIGN(4)
@@ -15,9 +14,7 @@ SECTIONS
         update_bss_start = .;
 
         *(.update_bss)
-
         update_bss_end = .;
-		. = ALIGN(4);
     } > ram0
 
     .text : ALIGN(4)
@@ -29,7 +26,6 @@ SECTIONS
 		*(.update_code)
 
 		update_code_end = .;
-		. = ALIGN(4);
     } > code0
 
 

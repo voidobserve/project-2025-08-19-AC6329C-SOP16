@@ -306,7 +306,7 @@ void gSensor_wkupup_enable(void)
     log_info("gSensor wkup enable\n");
     power_wakeup_index_enable(3);
 }
-static u8 sensor_init_flag;
+
 void mouse_board_devices_init(void)
 {
 
@@ -320,7 +320,7 @@ void mouse_board_devices_init(void)
 #if TCFG_HAL3212_EN
 	optical_mouse_sensor_led_switch(1);
 #endif
-    sensor_init_flag = 1;
+
 #endif /* TCFG_OMSENSOR_ENABLE*/
 
 #if TCFG_IOKEY_ENABLE
@@ -470,11 +470,6 @@ static void close_gpio(u8 mode)
 		[PORTD_GROUP] = 0x3ff,
 	};
 
-	if(P3_ANA_CON2 & BIT(3))
-	{
-		port_protect(port_group, IO_PORTB_02);	//protect VCM_IO
-	}
-
 #if TCFG_CODE_SWITCH_ENABLE
 	port_protect(port_group, TCFG_CODE_SWITCH_A_PHASE_PORT);
 	port_protect(port_group, TCFG_CODE_SWITCH_B_PHASE_PORT);
@@ -586,11 +581,9 @@ void board_set_soft_poweroff(void)
 	u32 portc_value = 0xffff;
 
 #if TCFG_OMSENSOR_ENABLE
-    if(sensor_init_flag){
-        optical_mouse_sensor_led_switch(0);
-        gSensor_wkupup_disable();
-    }
+	optical_mouse_sensor_led_switch(0);
 #endif
+	gSensor_wkupup_disable();
 
 	log_info("%s",__FUNCTION__);
 

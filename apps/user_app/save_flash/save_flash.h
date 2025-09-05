@@ -2,7 +2,7 @@
 #ifndef save_flash_h
 #define save_flash_h
 #include "led_strand_effect.h"
-#include "led_strip_drive.h"
+
 typedef enum
 {
     FRIST_BYTE,         //第一次上电标志
@@ -15,15 +15,9 @@ typedef struct
 {
     unsigned char header;           //头部
     fc_effect_t fc_save;
-      unsigned char  sa_ble_state;
-     u16 sa_rf433_code;
-
+     int8_t ble_state;
+     u32 rf433_code;
 }save_flash_t;
-
-
- 
-
-
 #pragma pack ()
 
 void save_user_data_area3(void);

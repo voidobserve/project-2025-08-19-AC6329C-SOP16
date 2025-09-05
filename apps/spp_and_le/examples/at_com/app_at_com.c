@@ -15,7 +15,6 @@
 #include "app_charge.h"
 #include "app_power_manage.h"
 #include "app_comm_bt.h"
-#include "ble_at_client.h"
 
 #define LOG_TAG_CONST       AT_COM
 #define LOG_TAG             "[AT_COM]"
@@ -55,18 +54,8 @@ static void ble_at_client_config_init(void)
 #endif
 
 
-void atcom_power_event_to_user(u8 event)
-{
-    struct sys_event e;
-    e.type = SYS_DEVICE_EVENT;
-    e.arg  = (void *)DEVICE_EVENT_FROM_POWER;
-    e.u.dev.event = event;
-    e.u.dev.value = 0;
-    sys_event_notify(&e);
-}
-
 extern void set_at_uart_wakeup(void);
-static void atcom_set_soft_poweroff(void)
+void atcom_set_soft_poweroff(void)
 {
     log_info("set_soft_poweroff\n");
     is_app_atcom_active = 1;
@@ -89,15 +78,12 @@ static void atcom_set_soft_poweroff(void)
 #endif
 }
 
-static void at_set_soft_poweroff(void)
+void at_set_soft_poweroff(void)
 {
     atcom_set_soft_poweroff();
 }
 
-void at_set_atcom_low_power_mode(u8 enable)
-{
-    is_app_atcom_active = !enable;
-}
+
 
 
 static void atcom_app_start()
@@ -242,7 +228,7 @@ static void atcom_key_event_handler(struct sys_event *event)
         if (event_type == KEY_EVENT_TRIPLE_CLICK
             && (key_value == TCFG_ADKEY_VALUE3 || key_value == TCFG_ADKEY_VALUE0)) {
             //for test
-            atcom_power_event_to_user(POWER_EVENT_POWER_SOFTOFF);
+            atcom_set_soft_poweroff();
             return;
         }
 
@@ -251,8 +237,6 @@ static void atcom_key_event_handler(struct sys_event *event)
     }
 }
 
-extern cbuffer_t at_to_uart_cbuf;
-static u8 at_uart_sent_buf[AT_UART_FIFIO_BUFFER_SIZE];
 extern void at_cmd_rx_handler(void);
 static int atcom_event_handler(struct application *app, struct sys_event *event)
 {
@@ -266,13 +250,6 @@ static int atcom_event_handler(struct application *app, struct sys_event *event)
             atcom_bt_connction_status_event_handler(&event->u.bt);
         } else if ((u32)event->arg == SYS_BT_EVENT_TYPE_HCI_STATUS) {
             atcom_bt_hci_event_handler(&event->u.bt);
-        } else if ((u32)event->arg == SYS_BT_EVENT_FORM_AT) {
-            int cbuf_len = cbuf_get_data_size(&at_to_uart_cbuf);
-            if (cbuf_len) {
-                cbuf_len = cbuf_read(&at_to_uart_cbuf, at_uart_sent_buf, cbuf_len);
-                ct_uart_send_packet(at_uart_sent_buf, cbuf_len);
-            }
-            /* put_buf(at_uart_sent_buf, cbuf_len);  */
         }
         return 0;
 
