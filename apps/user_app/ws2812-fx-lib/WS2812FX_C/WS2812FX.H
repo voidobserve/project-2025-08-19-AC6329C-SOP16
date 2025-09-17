@@ -58,31 +58,39 @@ typedef char __FlashStringHelper;
 // some common colors
 #define RED        (uint32_t)0xFF0000
 // #define GREEN      (uint32_t)0x00FF00
-#define GREEN      (uint32_t)0x00F000
-#define BLUE       (uint32_t)0x0000F0
+// #define GREEN      (uint32_t)0x00F000
+// #define BLUE       (uint32_t)0x0000F0
+#define GREEN      (uint32_t)0x0000FF00
+#define BLUE       (uint32_t)0x000000FF
 #define WHITE      (uint32_t)0x00FFFFFF
 // #define WHITE      (uint32_t)0x4B4B4B
 #define BLACK      (uint32_t)0x000000
 
-#define YELLOW     (uint32_t)0x787800
-#define CYAN       (uint32_t)0x007575
-#define MAGENTA    (uint32_t)0x780078
+// #define YELLOW     (uint32_t)0x787800
+// #define CYAN       (uint32_t)0x007575
+// #define MAGENTA    (uint32_t)0x780078
+#define YELLOW     (uint32_t)0x00FFFF00
+#define CYAN       (uint32_t)0x0000FFFF
+#define MAGENTA    (uint32_t)0x00FF00FF
 
 // #define YELLOW     (uint32_t)0xFFFF00
 // #define CYAN       (uint32_t)0x00FFFF
-// #define MAGENTA    (uint32_t)0xFF00FF
+#define MAGENTA    (uint32_t)0x00FF00FF
 
 
 // #define PURPLE     (uint32_t)0x400080
 // #define ORANGE     (uint32_t)0xFF3000
-#define PURPLE     (uint32_t)0x400080
-#define ORANGE     (uint32_t)0xC82500   //ok
+// #define PURPLE     (uint32_t)0x400080
+// #define ORANGE     (uint32_t)0xC82500   //ok
+#define PURPLE     (uint32_t)0x00400080
+#define ORANGE     (uint32_t)0x00FF3000
 
 // #define PINK       (uint32_t)0xFF1493
-#define PINK       (uint32_t)0x960b56
+// #define PINK       (uint32_t)0x960b56
+#define PINK       (uint32_t)0x00FF1493
 
 #define GRAY       (uint32_t)0x101010
-#define ULTRAWHITE (uint32_t)0xFFFFFFFF
+#define ULTRAWHITE (uint32_t)0xFF000000
 #define DIM(c)     (uint32_t)((c >> 2) & 0x3f3f3f3f) // color at 25% intensity
 #define DARK(c)    (uint32_t)((c >> 4) & 0x0f0f0f0f) // color at  6% intensity
 

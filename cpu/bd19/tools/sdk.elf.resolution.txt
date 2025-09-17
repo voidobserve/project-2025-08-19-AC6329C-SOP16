@@ -1785,11 +1785,9 @@ obj/Release/apps/user_app/led_strip/led_strand_effect.o
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,fb_led_speed_state,pl
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,fb_motor_state,pl
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,fb_motor_period,pl
--r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,save_user_data_area3,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,close_fan,l
--r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,one_wire_set_mode,l
--r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,enable_one_wire,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,mcpwm_set_duty,l
+-r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,save_user_data_area3,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,open_fan,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,get_on_off_state,pl
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,set_on_off_led,pl
@@ -1864,7 +1862,6 @@ obj/Release/apps/user_app/led_strip/led_strand_effect.o
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,WS2812FX_mode_rainbow,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,breath_w,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,mutil_c_breath,l
--r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,unbind_effect,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,WS2812FX_setPixelColor_rgb,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,WS2812FX_mode_static,l
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,rgb_sequence_map,pl
@@ -1881,7 +1878,6 @@ obj/Release/apps/user_app/led_strip/led_strand_effect.o
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,fc_static_map,pl
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,bright_jst,pl
 -r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,_seg_len,l
--r=obj/Release/apps/user_app/led_strip/led_strand_effect.o,_seg,l
 obj/Release/apps/user_app/led_strip/led_strip_drive.o
 -r=obj/Release/apps/user_app/led_strip/led_strip_drive.o,led_state_init,pl
 -r=obj/Release/apps/user_app/led_strip/led_strip_drive.o,ledc_init,l
