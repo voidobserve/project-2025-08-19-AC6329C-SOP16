@@ -7,9 +7,14 @@
 #include "system/event.h"
 #include "rcsp_msg.h"
 #include "ble_user.h"
+
+#if CONFIG_APP_OTA_ENABLE
+#include "rcsp_hid_inter.h"
+#endif
+
 #if RCSP_BTMATE_EN
 void rcsp_init();
-void rcsp_dev_select(u8 type);
+void rcsp_dev_select_v1(u8 type);
 void function_change_inform(void);
 
 bool common_msg_deal(u32 param, void *priv);
@@ -21,6 +26,7 @@ bool rtc_msg_deal(u32 param);
 void rcsp_exit(void);
 u8 rcsp_get_asr_status(void);
 u8 get_rcsp_support_new_reconn_flag(void);
+void set_rcsp_conn_handle(u16 handle);
 
 // enum {
 // RCSP_BLE,
@@ -38,6 +44,9 @@ struct JL_AI_VAR {
     struct ble_server_operation_t *rcsp_ble;
     u8 JL_spp_status;
     struct spp_operation_t *rcsp_spp;
+#if CONFIG_APP_OTA_ENABLE
+    struct rcsp_hid_operation_t *rcsp_hid;
+#endif
     volatile u8 speech_state;
     u32 feature_mask;
     u8 device_type;
@@ -83,6 +92,7 @@ bool rcsp_msg_post(RCSP_MSG msg, int argc, ...);
 #define 	SDK_TYPE_AC693X		0x2
 #define 	SDK_TYPE_AC695X 	0x3
 #define		SDK_TYPE_AC697X 	0x4
+#define		SDK_TYPE_AC632X 	0x10
 
 #if   (defined CONFIG_CPU_BR21)
 #define		RCSP_SDK_TYPE		SDK_TYPE_AC692X
@@ -92,6 +102,8 @@ bool rcsp_msg_post(RCSP_MSG msg, int argc, ...);
 #define		RCSP_SDK_TYPE		SDK_TYPE_AC695X
 #elif (defined CONFIG_CPU_BR30)
 #define		RCSP_SDK_TYPE		SDK_TYPE_AC697X
+#elif (defined CONFIG_CPU_BD19)
+#define		RCSP_SDK_TYPE		SDK_TYPE_AC632X
 #else
 #define		RCSP_SDK_TYPE		SDK_TYPE_AC693X
 #endif

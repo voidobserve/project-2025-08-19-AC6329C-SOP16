@@ -133,7 +133,16 @@ void bt_ble_init(void)
     multi_client_init();
 #endif
 
-    ble_module_enable(1);
+    extern u8 my_ble_state;
+    if(my_ble_state)
+    {
+        ble_module_enable(1);       //蓝牙模式使能
+    }
+    else
+    {
+
+        ble_module_enable(0);       //蓝牙模式失能
+    }
 }
 
 //模块退出

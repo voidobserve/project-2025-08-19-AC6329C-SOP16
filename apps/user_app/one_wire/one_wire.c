@@ -3,11 +3,12 @@
 #include "system/includes.h"
 #include "one_wire.h"
 #include "led_strand_effect.h"
+
 u16 send_base_ins = 0;
-u16 period[6] = {8, 11, 14, 17, 20, 35};  //转速  app指令，需要将8 13 18 21 26 转换成相应的16进制   //森木光纤灯
-// u16 period[6] = {20, 30, 40, 17, 20, 35};  //转速  app指令，需要将8 13 18 21 26 转换成相应的16进制   //森木光纤灯
+u16 motor_period[6] = {8, 11, 14, 17, 20, 35};  //转速  app指令，需要将8 13 18 21 26 转换成相应的16进制
 
 
+#define MOTOR_PIN IO_PORTB_06
 
 /**
  * @brief  mcu通讯接口
@@ -17,12 +18,11 @@ u16 period[6] = {8, 11, 14, 17, 20, 35};  //转速  app指令，需要将8 13 18
 void mcu_com_init(void)
 {
 
-	gpio_set_die(IO_PORTB_06, 1);         
-    gpio_set_pull_up(IO_PORTB_06,1);
-	gpio_direction_output(IO_PORTB_06, 1);
+	gpio_set_die(MOTOR_PIN, 1);         
+    gpio_set_pull_up(MOTOR_PIN,1);
+	gpio_direction_output(MOTOR_PIN, 1);
     
 }
-
 
 
 /**
@@ -35,16 +35,8 @@ void pack_base(void)
     send_base_ins = 0;
     send_base_ins |= fc_effect.base_ins.mode;
     if(fc_effect.base_ins.dir)    send_base_ins |= BIT(6);
-    // for(p = 0; p < 6; p++)
-    // {
-    //     if(period[p] == fc_effect.base_ins.period)
-    //     {
-    //         break;
-    //     }
-    // }
-    // if(p > 5) p=0;
     send_base_ins |= fc_effect.base_ins.period<<8;
-
+   
 }
 
 #define INS_LEN     16  //指令长度 
@@ -53,7 +45,7 @@ void pack_base(void)
 #define W_2MS       16
 u8 send_cnt = 0; 
 u8 step = 0;
-u8 _125ms_cnt = 0;
+u8 _125ms_cnt = 0;  //125us
 u8 h_l = 0; //0:输出低电平，1：高电平
 u8 send_en = 0;     //0:不发送， 1：发送   使能变量
 
@@ -75,7 +67,7 @@ void __attribute__((weak)) make_one_wire(u16 dat )
         case 0: //起始位
         /***********************************************************/
         //解决了app发送指令的，波形不正确的问题，但是问题愿意未清晰
-            if (count_ <= 40)  //5ms
+            if (count_ <= 40)  //2.5ms
             {
                 count_++;
                 return;
@@ -83,13 +75,13 @@ void __attribute__((weak)) make_one_wire(u16 dat )
         /**********************************************************/    
             if(h_l == 0)
             {
-                gpio_direction_output(IO_PORTB_06, 0);
+                gpio_direction_output(MOTOR_PIN, 0);
                _125ms_cnt++;
           
                 //++_125ms_cnt;
                 if(_125ms_cnt > (W_1MS))  //从1开始
                 {
-                    gpio_direction_output(IO_PORTB_06, 1);
+                    gpio_direction_output(MOTOR_PIN, 1);
                     
                     h_l = 1;
                     _125ms_cnt = 0;
@@ -98,12 +90,11 @@ void __attribute__((weak)) make_one_wire(u16 dat )
             }
             else
             {
-                // gpio_direction_output(IO_PORTA_00, 1);
                 _125ms_cnt++;
                 
                 if(_125ms_cnt == W_1MS)
                 { 
-                    gpio_direction_output(IO_PORTB_06, 0);
+                    gpio_direction_output(MOTOR_PIN, 0);
                     h_l = 0;
                     step = 1;
                     _125ms_cnt = 0;
@@ -114,14 +105,13 @@ void __attribute__((weak)) make_one_wire(u16 dat )
         case 1:
             if(h_l == 0)
             {
-                // gpio_direction_output(IO_PORTA_00, 0);
                 _125ms_cnt++;
             
               
                 if(_125ms_cnt == W_0_5MS)
                 {
                    
-                    gpio_direction_output(IO_PORTB_06, 1);
+                    gpio_direction_output(MOTOR_PIN, 1);
                      h_l = 1;
                     _125ms_cnt = 0;
                 }
@@ -130,12 +120,11 @@ void __attribute__((weak)) make_one_wire(u16 dat )
             {
                 if( (dat >> send_cnt) & 0x01)   //1
                 {
-                    // gpio_direction_output(IO_PORTA_00, 1);
                     _125ms_cnt++;
                     
                     if(_125ms_cnt == W_1MS)
                     {
-                        gpio_direction_output(IO_PORTB_06, 0);
+                        gpio_direction_output(MOTOR_PIN, 0);
 
                         h_l = 0;
                         _125ms_cnt = 0;
@@ -150,11 +139,10 @@ void __attribute__((weak)) make_one_wire(u16 dat )
                 }
                 else
                 {
-                    // gpio_direction_output(IO_PORTA_00, 1);
                     _125ms_cnt++;              
                     if(_125ms_cnt == W_0_5MS)
                     {
-                        gpio_direction_output(IO_PORTB_06, 0);
+                        gpio_direction_output(MOTOR_PIN, 0);
                         h_l = 0;
                         _125ms_cnt = 0;
                         // 完成1bit发送
@@ -173,11 +161,11 @@ void __attribute__((weak)) make_one_wire(u16 dat )
         case 2:
             if(h_l == 0)
             {
-                gpio_direction_output(IO_PORTB_06, 0);
+                gpio_direction_output(MOTOR_PIN, 0);
                 _125ms_cnt++;            
                 if(_125ms_cnt == W_2MS)
                 {
-                    gpio_direction_output(IO_PORTB_06, 1);
+                    gpio_direction_output(MOTOR_PIN, 1);
                    
                     _125ms_cnt = 0;
                     step = 0;
@@ -185,14 +173,13 @@ void __attribute__((weak)) make_one_wire(u16 dat )
                     send_en = 0;    //等待下一次触发
                 }
             }
-            break;
+        break;
     }
-    //  gpio_direction_output(IO_PORTA_01, 0);
 }
 
 void enable_one_wire(void)   //数据发送使能
 {
-    pack_base();
+    pack_base();   //打包数据
 
     send_en = 1;
     
@@ -209,10 +196,7 @@ void enable_one_wire(void)   //数据发送使能
 // AT_VOLATILE_RAM_CODE
 void one_wire_send(void)
 {
-    
-    // pack_base();
     make_one_wire(send_base_ins);
-    
     
 }
 
@@ -244,6 +228,7 @@ void one_wire_set_mode(u8 m)
  */
 void one_wire_set_period(u8 p)
 {
+   if( fc_effect.base_ins.mode == 0x05) return;
     fc_effect.base_ins.period = p;
     printf("base_ins.period = %d", fc_effect.base_ins.period);
 }
@@ -370,6 +355,7 @@ void set_stepmotor_fast(void)
  */
 
 u8 stepmotor_sound_cnt = 0;
+
 void effect_stepmotor(void)
 {
 
@@ -379,16 +365,18 @@ void effect_stepmotor(void)
         if(get_sound_result())  
         {
             set_stepmotor_fast();
-           
+           printf("1111\n");
             stepmotor_sound_cnt = 0;
         }
 
         if(stepmotor_sound_cnt < 100)
         {
             stepmotor_sound_cnt++;
+           
         }
         if(stepmotor_sound_cnt >= 100)
         {
+             printf("2222\n");
             set_stepmotor_slow();
         }
 
@@ -397,18 +385,15 @@ void effect_stepmotor(void)
 }
 
 
-
 u8 counting_flag = 0;  //1：计时中， 0：计时完成
 u16 stop_cnt = 0;
 u8 set_time = 0; //1：不允许修改时间  0：允许修改时间
 u8 temp = 0;
-u8 long_key;
 void clean_stepmorot_flag(void)
 {
     counting_flag = 0;
     stop_cnt = 0;
     set_time = 1;
-    long_key = 0;  //长按立即停的标志
 }
 //10计时
 void stepmotor(void)
@@ -419,8 +404,7 @@ void stepmotor(void)
        
         set_time = 0;
         temp = fc_effect.base_ins.period;
-
-        if(fc_effect.on_off_flag == DEVICE_OFF ||long_key == 1 )
+        if(fc_effect.on_off_flag == DEVICE_OFF)
          temp = 0;
        
     }
@@ -429,6 +413,7 @@ void stepmotor(void)
        
         if(stop_cnt == temp * 100)
         {
+         
             one_wire_set_mode(6);
             enable_one_wire();
             clean_stepmorot_flag();
@@ -444,9 +429,11 @@ void stepmotor(void)
 }
 
 
+void motor_Init(void)
+{
+    counting_flag = 0;        //无霍尔时，电机
+    set_time = 1;
 
-
-
-
+}
 
 

@@ -3,6 +3,11 @@
 
 
 
+int putchar(int a)
+{
+    return a;
+}
+
 #ifndef CONFIG_DEBUG_ENABLE
 
 int putchar(int a)

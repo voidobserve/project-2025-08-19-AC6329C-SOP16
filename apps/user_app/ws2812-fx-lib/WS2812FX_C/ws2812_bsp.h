@@ -11,7 +11,7 @@ void ws281x_show(unsigned char *pixels_pattern, uint16_t pattern_size);
 unsigned long HAL_GetTick(void);
 
 // 每10ms调用一次
-void run_tick_per_10ms(void);
+extern void run_tick_per_10ms(void);
 
 
 

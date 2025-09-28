@@ -2,7 +2,7 @@
 #include "asm/clock.h"
 #include "asm/gpio.h"
 
-#define MCPWM_DEBUG_ENABLE  	1
+#define MCPWM_DEBUG_ENABLE  	0
 #if MCPWM_DEBUG_ENABLE
 #define mcpwm_debug(fmt, ...) printf("[MCPWM] "fmt, ##__VA_ARGS__)
 #else
@@ -142,23 +142,21 @@ void mcpwm_set_duty(pwm_ch_num_type pwm_ch, u16 duty)
     PWM_TIMER_REG *timer_reg = get_pwm_timer_reg(pwm_ch);
     PWM_CH_REG *pwm_reg = get_pwm_ch_reg(pwm_ch);
 
-#if 0
-    if (pwm_reg && timer_reg) {
-        pwm_reg->ch_cmpl = timer_reg->tmr_pr * duty / 10000;
-        pwm_reg->ch_cmph = pwm_reg->ch_cmpl;
-        timer_reg->tmr_cnt = 0;
-        timer_reg->tmr_con |= 0b01;
-        if (duty == 10000) {
-            timer_reg->tmr_cnt = 0;
-            timer_reg->tmr_con &= ~(0b11);
-        } else if (duty == 0) {
-            timer_reg->tmr_cnt = pwm_reg->ch_cmpl;
-            timer_reg->tmr_con &= ~(0b11);
-        }
-    }
-#endif
+    // if (pwm_reg && timer_reg) {
+    //     pwm_reg->ch_cmpl = timer_reg->tmr_pr * duty / 10000;
+    //     pwm_reg->ch_cmph = pwm_reg->ch_cmpl;
+    //     timer_reg->tmr_cnt = 0;
+    //     timer_reg->tmr_con |= 0b01;
+    //     if (duty == 10000) {
+    //         timer_reg->tmr_cnt = 0;
+    //         timer_reg->tmr_con &= ~(0b11);
+    //     } else if (duty == 0) {
+    //         timer_reg->tmr_cnt = pwm_reg->ch_cmpl;
+    //         timer_reg->tmr_con &= ~(0b11);
+    //     }
+    // }
 
-    if (pwm_reg && timer_reg) {
+     if (pwm_reg && timer_reg) {
 
         // 如果不是100%占空比，直接写入对应的占空比寄存器
         if (duty != 10000) {
@@ -293,10 +291,9 @@ void mcpwm_init(struct pwm_platform_data *arg)
         pwm_reg->ch_con0 &= ~(BIT(5) | BIT(4));
     }
 
-    //set duty
-    mcpwm_set_duty(arg->pwm_ch_num, arg->duty);
-    mcpwm_open(arg->pwm_ch_num); 	 //mcpwm enable
-
+    // 先设置占空比,再打开通道
+    mcpwm_set_duty(arg->pwm_ch_num, arg->duty);   //set duty 
+    mcpwm_open(arg->pwm_ch_num); 	              //mcpwm enable 
 
     //H:
     if (arg->h_pin < IO_MAX_NUM) {      //任意引脚
