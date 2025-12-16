@@ -388,7 +388,9 @@ void rf433_handle(void)
                 }
 
             }
-            save_user_data_area3();
+
+            // save_user_data_area3();
+            os_taskq_post("msg_task", 1, MSG_USER_SAVE_INFO);
      
 
         }  //判断客户码
@@ -433,7 +435,9 @@ void rf433_handle(void)
                 my_ble_state = 0;
                
             }
-            save_user_data_area3();
+
+            // save_user_data_area3();
+            os_taskq_post("msg_task", 1, MSG_USER_SAVE_INFO);
         }
 
 

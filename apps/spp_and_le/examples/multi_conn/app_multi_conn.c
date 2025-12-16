@@ -168,6 +168,7 @@ static int multi_bt_connction_status_event_handler(struct bt_event *bt)
  */
 static void multi_key_event_handler(struct sys_event *event)
 {
+#if 0
     /* u16 cpi = 0; */
     u8 event_type = 0;
     u8 key_value = 0;
@@ -221,6 +222,7 @@ static void multi_key_event_handler(struct sys_event *event)
         }
 
     }
+#endif
 }
 
 static int multi_event_handler(struct application *app, struct sys_event *event)

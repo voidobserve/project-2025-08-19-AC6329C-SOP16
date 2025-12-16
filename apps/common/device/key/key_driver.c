@@ -374,7 +374,7 @@ _scan_end:
 void key_active_set(u8 port)
 {
     /*要用按键宏包住，不用按键功能，唤醒后就再也不进睡眠*/
-#if (TCFG_IOKEY_ENABLE || TCFG_ADKEY_ENABLE || TCFG_TOUCH_KEY_ENABLE)
+#if (TCFG_IOKEY_ENABLE || TCFG_ADKEY_ENABLE || TCFG_TOUCH_KEY_ENABLE || TCFG_RF24GKEY_ENABLE)
     is_key_active = 35;      //35*10Ms
 #endif
 }

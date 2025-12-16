@@ -461,6 +461,38 @@ void Adafruit_NeoPixel_setPixelColor(uint16_t n, uint32_t c) {
   }
 }
 
+void Adafruit_NeoPixel_setPixelColor_with_max_brightness(uint16_t n, uint32_t c)
+{
+    u8 brightness = 255; // 最大亮度值
+
+    if (n < numLEDs)
+    {
+        uint8_t *p,
+            r = (uint8_t)(c >> 16),
+            g = (uint8_t)(c >> 8),
+            b = (uint8_t)c;
+        if (brightness)
+        { // See notes in setBrightness()
+            r = (r * brightness) >> 8;
+            g = (g * brightness) >> 8;
+            b = (b * brightness) >> 8;
+        }
+        if (wOffset == rOffset)
+        {
+            p = &pixels[n * 3];
+        }
+        else
+        {
+            p = &pixels[n * 4];
+            uint8_t w = (uint8_t)(c >> 24);
+            p[wOffset] = brightness ? ((w * brightness) >> 8) : w;
+        }
+        p[rOffset] = r;
+        p[gOffset] = g;
+        p[bOffset] = b;
+    }
+}
+
 // 透传写入颜色，没有调整亮度
 void Adafruit_NeoPixel_setPixelColor_raw(uint16_t n, uint32_t c) {
   if(n < numLEDs) {
@@ -512,6 +544,35 @@ void Adafruit_NeoPixel_fill(uint32_t c, uint16_t first, uint16_t count) {
   for(i = first; i < end; i++) {
     Adafruit_NeoPixel_setPixelColor(i, c);
   }
+}
+
+void Adafruit_NeoPixel_fill_with_max_brightness(uint32_t c, uint16_t first, uint16_t count)
+{
+    uint16_t i, end;
+
+    if (first >= numLEDs)
+    {
+        return; // If first LED is past end of strip, nothing to do
+    }
+
+    // Calculate the index ONE AFTER the last pixel to fill
+    if (count == 0)
+    {
+        // Fill to end of strip
+        end = numLEDs;
+    }
+    else
+    {
+        // Ensure that the loop won't go past the last pixel
+        end = first + count;
+        if (end > numLEDs)
+            end = numLEDs;
+    }
+
+    for (i = first; i < end; i++)
+    {
+        Adafruit_NeoPixel_setPixelColor_with_max_brightness(i, c);
+    }
 }
 
 /*!

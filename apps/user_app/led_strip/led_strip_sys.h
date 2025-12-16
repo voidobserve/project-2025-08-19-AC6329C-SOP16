@@ -116,4 +116,16 @@ typedef enum
     IR_TIMER_120MIN = 120*60*1000,
 }AUTO_TIME_T;
 
+
+
+enum
+{
+    MSG_SEQUENCER_NONE = 0x00,
+    MSG_SEQUENCER_ONE_WIRE_SEND_INFO, // 使能单线发送（控制电机） 
+
+    MSG_USER_SAVE_INFO, // 将数据写入flash
+};
+
+void app_set_music_mode(u8 tp_m);
+
 #endif

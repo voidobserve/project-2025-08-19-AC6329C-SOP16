@@ -105,8 +105,11 @@ uint16_t WS2812FX_mode_comet_6(void);
 uint16_t fc_double_meteor(void);
 void close_metemor(void);
 
-
-
-
+#if 0
+u16 colorful_lights_sound_gradual_max_brightness(void);
+u16 colorful_lights_sound_breath_max_brightness(void);
+u16 colorful_lights_sound_static_max_brightness(void);
+u16 colorful_lights_sound_twinkle_max_brightness(void);
+#endif
 
 #endif

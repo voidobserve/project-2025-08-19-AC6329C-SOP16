@@ -179,7 +179,9 @@ typedef struct
   unsigned char star_index;
   unsigned short star_speed;
   unsigned char app_star_speed;
-  unsigned char star_speed_index;
+  // unsigned char star_speed_index;
+
+  unsigned char motor_speed_index; // 电机速度索引
 
 } fc_effect_t;
 

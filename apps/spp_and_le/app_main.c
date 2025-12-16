@@ -29,6 +29,8 @@
 #include "debug.h"
 #include "rf433_app.h"
 
+#include "led_strip_sys.h"
+
 OS_SEM LED_TASK_SEM;
 
 /*任务列表   */
@@ -71,6 +73,9 @@ const struct task_info task_info_table[] = {
 #endif
 
     // {"led_task",            2,      0,  512,    512},//灯光
+    {"main_task", 3, 0, 512, 512}, // 主任务
+    {"msg_task", 3, 0, 256, 256},  // 用户消息处理线程
+
     {0, 0},
 };
 
@@ -306,7 +311,9 @@ static const u16 timer_div[] = {
     /*1110*/ 32 * 256,
     /*1111*/ 128 * 256,
 };
-#define APP_TIMER_CLK (CONFIG_BT_NORMAL_HZ / 2) // clk_get("timer")
+
+// #define APP_TIMER_CLK (CONFIG_BT_NORMAL_HZ / 2) // clk_get("timer")
+#define APP_TIMER_CLK (24000000) // clk_get("timer")
 #define MAX_TIME_CNT 0x7fff
 #define MIN_TIME_CNT 0x100
 #define TIMER_UNIT 1
@@ -326,10 +333,10 @@ ___interrupt
     extern void one_wire_send(void);
     one_wire_send(); // steomotor
 
-    // #if TCFG_RF433GKEY_ENABLE
-    extern void timer125us_hook(void);
-    timer125us_hook();
-    // #endif
+// #if TCFG_RF433GKEY_ENABLE
+    // extern void timer125us_hook(void);
+    // timer125us_hook();
+// #endif
 }
 
 void user_timer_init(void)
@@ -340,7 +347,7 @@ void user_timer_init(void)
     //	printf("********* user_timer_init **********\n");
     for (index = 0; index < (sizeof(timer_div) / sizeof(timer_div[0])); index++)
     {
-        prd_cnt = TIMER_UNIT * (APP_TIMER_CLK / 8000) / timer_div[index]; // 8000==125us
+        prd_cnt = TIMER_UNIT * (APP_TIMER_CLK / 8000) / timer_div[index];
         if (prd_cnt > MIN_TIME_CNT && prd_cnt < MAX_TIME_CNT)
         {
             break;
@@ -349,8 +356,8 @@ void user_timer_init(void)
 
     TIMER_CNT = 0;
     TIMER_PRD = prd_cnt;
-    request_irq(TIMER_VETOR, 0, user_timer_isr, 0);
-    TIMER_CON = (index << 4) | BIT(0) | BIT(3);
+    request_irq(TIMER_VETOR, 3, user_timer_isr, 0);
+    TIMER_CON = (0b0001 << 10) | (index << 4) | (0x01 << 0); // 选择晶振作为时钟源，分频系数，定时器计数模式
 }
 __initcall(user_timer_init);
 
@@ -359,55 +366,105 @@ __initcall(user_timer_init);
 #include "led_strip_drive.h"
 #include "hardware.h"
 
-void main_while(void)
-{
+void main_task(void *p)
+{ 
+    read_flash_device_status_init();
+    full_color_init();
 
-    // while(1)
-    // {
+    while (1)
+    {
 
-    //    power_motor_Init(); //用做电机的上电时，多次发送
-
-    // =================================
-    //           默认内容，不用修改
-    // =================================
-    sound_handle();
-    run_tick_per_10ms();
-    WS2812FX_service();
-    // os_time_dly(1);
-    // }
+        save_user_data_time_count_down();
+        save_user_data_handle();
+        os_time_dly(1);
+    }
 }
 
 extern void count_down_run(void);
 extern void time_clock_handler(void);
 extern void rf433_handle(void);
 
-// #include "WS2812FX.H"
-#define RED (uint32_t)0x00FF0000
+void ws2812_task(void *p)
+{
+    sound_handle();
+    run_tick_per_10ms();
+    WS2812FX_service();
+}
+
+/*
+    处理用户消息的线程 user_msg_handle_task
+
+    给该线程发送消息，例如：
+    os_taskq_post("msg_task", 1, MSG_SEQUENCER_ONE_WIRE_SEND_INFO);
+*/
+void user_msg_handle_task(void *p)
+{
+    int msg[32] = {0};
+
+    while (1)
+    {
+        int ret = os_taskq_pend("msg_task", msg, 1);
+        if (OS_TASKQ != ret) // 类型不对
+        {
+            continue;
+        }
+
+        if (msg[0] != Q_USER) // 不是用户消息
+        {
+            continue;
+        }
+
+        // 打印接收到的消息
+        // for (u8 i =0; i < ARRAY_SIZE(msg); i++)
+        // {
+        //     printf("msg [%u]: %d\n", (u16)i, msg[i]);
+        // }
+
+        switch (msg[1])
+        {
+        case MSG_SEQUENCER_ONE_WIRE_SEND_INFO: // 使能单线发送
+        { 
+            for (u8 i = 0; i < 5; i++) // 控制重复发送次数
+            {
+                while (is_one_wire_send_end()) // 如果还未发送完，继续等待
+                {
+                    // printf("one wire send wait\n");
+                    os_time_dly(1);
+                }
+
+                enable_one_wire();
+            }
+        }
+        break;
+        // ==================================================================
+        case MSG_USER_SAVE_INFO:
+        {
+            save_user_data_enable();
+        }
+        break;
+        }
+    } // while (1)
+}
+ 
 void my_main(void)
 {
     led_gpio_init();
     led_pwm_init();
     mic_gpio_init();
     fan_gpio_init();
-    // mcu_com_init();  //电机一线通信
+    mcu_com_init(); // 电机一线通信
 
     // #if TCFG_RF433GKEY_ENABLE
     // rf433_gpio_init();
     // #endif
+ 
 
-    read_flash_device_status_init();
-    full_color_init();
+    sys_hi_timer_add(NULL, ws2812_task, 10);
 
-    // sys_s_hi_timer_add(NULL, count_down_run, 10); //注册定时关机定时器
-    // sys_s_hi_timer_add(NULL, time_clock_handler, 10); //注册定时做的时间计时定时器
-    // sys_s_hi_timer_add(NULL, ir_timer_handler, 10); //注册红外定时器
-    // sys_s_hi_timer_add(NULL, meteor_period_sub, 10); //注册流星周期定时器
-    // sys_s_hi_timer_add(NULL, rf433_handle, 10); //注册定时关机定时器
-    // os_sem_create(&LED_TASK_SEM,0);
-
-    // task_create(main_while, NULL, "led_task"); // 原本的工程，是用线程来进行处理
-    // sys_s_hi_timer_add(NULL, main_while, 10); // 用这个时间会有偏差
-    sys_hi_timer_add(NULL, main_while, 10);
-
-    // mcpwm_set_duty(pwm_ch0, 10000); // R // 测试PWM抖动问题
+    task_create(user_msg_handle_task, NULL, "msg_task"); 
+    /*
+        这里要放到最后，防止调用 soft_turn_on_the_light() 给线程发送消息时，
+        接收消息的线程没有创建，导致收不到消息，最后一上电电机会不工作
+    */
+    task_create(main_task, NULL, "main_task");
 }

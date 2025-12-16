@@ -367,7 +367,8 @@ void fb_sensitive(void)
     uint8_t tp_buffer[6];
     tp_buffer[0] = 0x2F;
     tp_buffer[1] = 0x05;
-    tp_buffer[2] = 100 - fc_effect.music.s;
+    // tp_buffer[2] = 100 - fc_effect.music.s;
+    tp_buffer[2] = fc_effect.music.s;
 
     zd_fb_2_app(tp_buffer, 3);
 }
@@ -775,7 +776,8 @@ void parse_zd_data(unsigned char *LedCommand)
             if (LedCommand[0] == 0x2F && LedCommand[1] == 0x05)
             {
                 // 值越小越灵敏
-                app_set_sensitive(100 - LedCommand[2]);
+                // app_set_sensitive(100 - LedCommand[2]);
+                app_set_sensitive(LedCommand[2]);
                 fb_sensitive();
             }
 
@@ -813,22 +815,24 @@ void parse_zd_data(unsigned char *LedCommand)
             // ---------------------------------设置电机模式-----------------------------------
             if (LedCommand[0] == 0x2F && LedCommand[1] == 0x06)
             {
+                extern void one_wire_set_mode(u8 m);
+                extern u8 counting_flag;
+                extern u8 set_time;
+                extern u8 stop_cnt;
+                if (LedCommand[2] == 0 && counting_flag == 0)
+                {
+                    fc_effect.motor_on_off = DEVICE_OFF; 
+                    counting_flag = 1; // 开始计时
+                    set_time = 1;      // 允许修改时间
+                }
+                else
+                {
+                    fc_effect.motor_on_off = DEVICE_ON;
+                }
 
-                // extern void one_wire_set_mode(u8 m);
-                // extern void enable_one_wire(void);
-                // one_wire_set_mode(LedCommand[2]); //配置模式
-                // os_time_dly(1);
-                // enable_one_wire();  //使用发送数据
-
-                // if(LedCommand[2] == 6)
-                // {
-                //     fc_effect.motor_on_off = DEVICE_OFF;
-
-                // }else{
-                //     fc_effect.motor_on_off = DEVICE_ON;
-                // }
-
-                // fb_motor_mode();
+                one_wire_set_mode(LedCommand[2]); // 配置模式 
+                os_taskq_post("msg_task", 1, MSG_SEQUENCER_ONE_WIRE_SEND_INFO);
+                fb_motor_mode();
             }
 
             // --------------------------------设置电机转速-----------------------------------
@@ -836,34 +840,26 @@ void parse_zd_data(unsigned char *LedCommand)
             {
                 extern void one_wire_set_period(u8 p);
                 one_wire_set_period(LedCommand[2]);
-                enable_one_wire();
-                os_time_dly(4);
-                enable_one_wire();
+                os_taskq_post("msg_task", 1, MSG_SEQUENCER_ONE_WIRE_SEND_INFO);
                 fb_motor_speed();
             }
             // --------------------------------设置电机开关-----------------------------------
             if (LedCommand[0] == 0x2F && LedCommand[1] == 0x08)
             {
-
                 if (fc_effect.motor_on_off == DEVICE_OFF) // 开电机
                 {
                     fc_effect.motor_on_off = DEVICE_ON;
                     extern void one_wire_set_mode(u8 m);
                     one_wire_set_mode(4); // 配置模式 360转
-                    enable_one_wire();
-                    os_time_dly(4);
-                    enable_one_wire();
-
+                    os_taskq_post("msg_task", 1, MSG_SEQUENCER_ONE_WIRE_SEND_INFO);
                     fb_motor_switch();
                 }
                 else
                 {
-                    extern void one_wire_set_mode(u8 m);
                     fc_effect.motor_on_off = DEVICE_OFF;
+                    extern void one_wire_set_mode(u8 m);
                     one_wire_set_mode(6); // 配置模式 停止
-                    enable_one_wire();
-                    os_time_dly(4);
-                    enable_one_wire();
+                    os_taskq_post("msg_task", 1, MSG_SEQUENCER_ONE_WIRE_SEND_INFO);
                     fb_motor_switch();
                 }
             }
@@ -881,7 +877,8 @@ void parse_led_strip_data(u8 *pBuf, u8 len)
     parse_zd_data(pBuf);
     /* 为兼容全彩的协议 */
 
-    save_user_data_area3();
+    // save_user_data_area3();
+    os_taskq_post("msg_task", 1, MSG_USER_SAVE_INFO);
 }
 
 void tuya_fb_sw_state(void)

@@ -2,7 +2,7 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="XWD-RGBW(12V)" />
+		<Option title="欣沃达-220V灯板" />
 		<Option compiler="q32s_lto_compiler" />
 		<Build>
 			<Target title="Release">
@@ -1256,10 +1256,6 @@
 		<Unit filename="board_ac632n_demo_cfg.h" />
 		<Unit filename="board_ac632n_demo_global_build_cfg.h" />
 		<Unit filename="board_config.h" />
-		<Extensions>
-			<code_completion />
-			<envvars />
-			<debugger />
-		</Extensions>
+		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

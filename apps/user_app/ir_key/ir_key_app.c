@@ -48,7 +48,7 @@ u8 ir_sensitive = 0;
 #define IR_TIMER_UNIT   1000
 #define IR_CHANGE_MODE_T    (10*1000)     //10秒换一个模式
 
-extern void save_user_data_area3(void);
+// extern void save_user_data_area3(void);
 
 //--------------------------------------------------自动
 /* 设置自动开与关 */
@@ -71,7 +71,8 @@ void set_ir_auto(ir_auto_e auto_f)
 void change_ir_auto()
 {
     fc_effect.auto_f = !fc_effect.auto_f;
-    save_user_data_area3();
+    // save_user_data_area3();
+    os_taskq_post("msg_task", 1, MSG_USER_SAVE_INFO);
 
 }
 /* 获取自动状态 */
@@ -354,8 +355,10 @@ void ir_key_handle(struct sys_event *event)
                 break;
 
             }//switch
-            extern void save_user_data_area3(void);
-            save_user_data_area3();
+
+            // extern void save_user_data_area3(void);
+            // save_user_data_area3();
+            os_taskq_post("msg_task", 1, MSG_USER_SAVE_INFO);
         }//if(event_type == KEY_EVENT_CLICK && on_off_flag == DEVICE_ON)
     }//if(event->u.key.type == KEY_DRIVER_TYPE_IR)
 }
