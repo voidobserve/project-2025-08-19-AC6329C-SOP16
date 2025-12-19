@@ -80,7 +80,7 @@ struct key_driver_para rf24g_scan_para = {
     .get_value = Get_24G_KeyValue,
 };
 
-// 底层按键扫描，由__resolve_adv_report()调用
+// 底层按键扫描，由 __resolve_adv_report() 调用
 void rf24g_scan(u8 *pBuf)
 {
     rf24g_ins_t *p = (rf24g_ins_t *)pBuf;
